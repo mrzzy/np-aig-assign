@@ -4,11 +4,9 @@ from GameEntity import *
 from Projectile import *
 
 
-
 class Character(GameEntity):
+    def __init__(self, world, name, image, respawnable=True):
 
-    def __init__(self, world, name, image, respawnable = True):
-        
         GameEntity.__init__(self, world, name, image)
 
         # --- Combat attributes ---
@@ -17,11 +15,13 @@ class Character(GameEntity):
         self.current_melee_cooldown = 0
 
         self.ranged_damage = 0
-        self.ranged_cooldown = 3.
+        self.ranged_cooldown = 3.0
         self.current_ranged_cooldown = 0
 
-        self.min_target_distance = 100          # distance within which character will switch to attack mode
-        
+        self.min_target_distance = (
+            100  # distance within which character will switch to attack mode
+        )
+
         # -- Respawn attributes ---
         self.ko = False
         self.respawnable = respawnable
@@ -38,7 +38,6 @@ class Character(GameEntity):
         self.xp_to_next_level = XP_TO_LEVEL
         self.level_up_message = None
         self.level_up_y = 0
-
 
     def process(self, time_passed):
 
@@ -86,7 +85,7 @@ class Character(GameEntity):
         if self.current_healing_cooldown > 0:
             self.current_healing_cooldown -= time_passed
 
-        else:       
+        else:
             if self.current_melee_cooldown > 0:
                 self.current_melee_cooldown -= time_passed
 
@@ -95,7 +94,7 @@ class Character(GameEntity):
 
         if self.ko:
             self.current_respawn_time -= time_passed
-            
+
     # --- Deals melee damage to target if you are colliding with it ---
     def melee_attack(self, target):
 
@@ -104,16 +103,15 @@ class Character(GameEntity):
         # -----------------------------------------
         if self.team_id == target.team_id:
             return
-        
+
         if self.current_healing_cooldown <= 0:
-            
+
             # colliding with target
             if pygame.sprite.collide_rect(self, self.target):
                 if self.current_melee_cooldown <= 0:
                     self.target.current_hp -= self.melee_damage
                     self.current_melee_cooldown = self.melee_cooldown
                     self.xp += self.melee_damage
-
 
     # -----------------------------------------------------------------
     #   Creates a projectile that deals ranged damage
@@ -124,18 +122,20 @@ class Character(GameEntity):
     #       - Travels until it reaches target_position, then explodes
     #       - Damages all opponents colliding with explosive_image
     # -----------------------------------------------------------------
-    def ranged_attack(self, target_position, explosive_image = None):
+    def ranged_attack(self, target_position, explosive_image=None):
 
         if self.current_healing_cooldown <= 0 and self.current_ranged_cooldown <= 0:
-            
-            projectile = Projectile(self, self.world, self.projectile_image, explosive_image)
+
+            projectile = Projectile(
+                self, self.world, self.projectile_image, explosive_image
+            )
 
             if explosive_image:
                 distance = (self.position - target_position).length()
                 projectile.max_range = min(distance, self.projectile_range)
             else:
                 projectile.max_range = self.projectile_range
-            
+
             projectile.maxSpeed = self.projectile_speed
             projectile.damage = self.ranged_damage
             projectile.team_id = self.team_id
@@ -144,19 +144,26 @@ class Character(GameEntity):
             projectile.velocity = target_position - projectile.position
             projectile.velocity.normalize_ip()
             projectile.velocity *= projectile.maxSpeed
-            
+
             self.world.add_entity(projectile)
             self.current_ranged_cooldown = self.ranged_cooldown
-
 
     # --- Heals self. Units who have healed cannot attack for self.healing_cooldown seconds ---
     def heal(self):
 
         if self.current_healing_cooldown <= 0:
-            self.current_hp = min(self.current_hp + self.max_hp * self.healing_percentage / 100, self.max_hp)
+            self.current_hp = min(
+                self.current_hp + self.max_hp * self.healing_percentage / 100,
+                self.max_hp,
+            )
             self.current_healing_cooldown = self.healing_cooldown
-            print(TEAM_NAME[self.team_id] + " " + self.name + " healed up to " + str(self.current_hp))
-
+            print(
+                TEAM_NAME[self.team_id]
+                + " "
+                + self.name
+                + " healed up to "
+                + str(self.current_hp)
+            )
 
     def render(self, surface):
         if not self.ko:
@@ -167,7 +174,10 @@ class Character(GameEntity):
             font = pygame.font.SysFont("comicsansms", 18, True)
             msg = font.render("+" + self.level_up_message, True, (255, 255, 255))
             w, h = font.size("+" + self.level_up_message)
-            surface.blit(msg, (self.position[0] - w/2, self.position[1] - h/2 - self.level_up_y))
+            surface.blit(
+                msg,
+                (self.position[0] - w / 2, self.position[1] - h / 2 - self.level_up_y),
+            )
             self.level_up_y += 1
             if self.level_up_y == 40:
                 self.level_up_y = 0
@@ -175,19 +185,27 @@ class Character(GameEntity):
 
         # --- If DEBUG is on, shows min_target_distance and target ---
         if DEBUG:
-            pygame.draw.circle(surface, (0, 0, 0), (int(self.position[0]), int(self.position[1])), int(self.min_target_distance), int(2))
+            pygame.draw.circle(
+                surface,
+                (0, 0, 0),
+                (int(self.position[0]), int(self.position[1])),
+                int(self.min_target_distance),
+                int(2),
+            )
 
             font = pygame.font.SysFont("arial", 12, True)
-            state_name = font.render(self.brain.active_state.name, True, (255, 255, 255))
+            state_name = font.render(
+                self.brain.active_state.name, True, (255, 255, 255)
+            )
             surface.blit(state_name, self.position)
 
             if self.target:
-                pygame.draw.line(surface, (0, 255, 0), self.position, self.target.position)
-
+                pygame.draw.line(
+                    surface, (0, 255, 0), self.position, self.target.position
+                )
 
     def can_level_up(self):
         return self.xp >= self.xp_to_next_level
-                
 
     # --- Levels up the given stat. Does nothing if there is not enough XP to level ---
     def level_up(self, stat):
@@ -231,6 +249,13 @@ class Character(GameEntity):
 
         self.xp -= self.xp_to_next_level
         self.xp_to_next_level += XP_TO_LEVEL
-        print(TEAM_NAME[self.team_id] + " " + self.name + " leveled up " + stat + " by " + str(amount))
+        print(
+            TEAM_NAME[self.team_id]
+            + " "
+            + self.name
+            + " leveled up "
+            + stat
+            + " by "
+            + str(amount)
+        )
         self.level_up_message = stat
-
