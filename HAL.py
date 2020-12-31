@@ -32,7 +32,7 @@ class World(object):
         self.entity_id = 0
         self.obstacles = []
         self.background = pygame.image.load(
-            "assets\grass_bkgrd_1024_768.png"
+            "assets/grass_bkgrd_1024_768.png"
         ).convert_alpha()
 
         self.graph = Graph(self)
