@@ -1,16 +1,30 @@
 import os
 
+
+## Configurable Settings
 DEBUG = bool(os.environ.get("DEBUG", default=False))
 SHOW_PATHS = bool(os.environ.get("SHOW_PATHS", default=False))
 SHOW_SPLASH = bool(os.environ.get("SHOW_SPLASH", default=False))
 SPEED_MULTIPLIER = float(os.environ.get("SPEED_MULTIPLIER", default=1.0))
 
-DIFFICULTY=str(os.environ.get("DIFFICULTY", default="easy"))
+DIFFICULTY = str(os.environ.get("DIFFICULTY", default="easy"))
 if DIFFICULTY not in ["easy", "hard"]:
     raise NotImplementedError(f"Unsupported difficulty: {DIFFICULTY}")
-RED_MULTIPLIER = 1.0 if DIFFICULTY == "easy" else 1.15 # Set this to 1.0 for Easy Mode
+# Set this to 1.0 for Easy Mode
 # Set this to 1.15 for Hard Mode
+RED_MULTIPLIER = 1.0 if DIFFICULTY == "easy" else 1.15
 
+# Game AI source files for game NPCs for Teams A & B
+NPC_A_SRCS = os.environ.get(
+    "NPC_A_SRCS", "Knight_TeamA.py,Archer_TeamA.py,Wizard_TeamA.py"
+).split(",")
+NPC_B_SRCS = os.environ.get(
+    "NPC_B_SRCS", "Knight_TeamB.py,Archer_TeamB.py,Wizard_TeamB.py"
+).split(",")
+KNIGHT_A_SRC, ARCHER_A_SRC, WIZARD_A_SRC = NPC_A_SRCS
+KNIGHT_B_SRC, ARCHER_B_SRC, WIZARD_B_SRC = NPC_B_SRCS
+
+## Game Settings
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 768
 SCREEN_SIZE = (SCREEN_WIDTH, SCREEN_HEIGHT)

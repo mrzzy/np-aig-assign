@@ -3,6 +3,7 @@ from pygame.locals import *
 
 from random import randint, random
 from math import *
+from importlib.util import spec_from_file_location, module_from_spec
 from pygame.math import *
 
 from Globals import *
@@ -16,14 +17,30 @@ from Orc import *
 from Tower import *
 from Base import *
 
-from Knight_TeamA import *
-from Archer_TeamA import *
-from Wizard_TeamA import *
+def import_npc(path):
+    """
+    Imports the Game AI the python source at path
+    """
+    # import module from source at path
+    mod_spec = spec_from_file_location("module", path)
+    mod = module_from_spec(mod_spec)
+    mod_spec.loader.exec_module(mod)
 
-from Knight_TeamB import *
-from Archer_TeamB import *
-from Wizard_TeamB import *
+    # unpack npc class from module
+    matching_names = [ n for n in dir(mod) if "Knight_" in n or "Archer_" in n or "Wizard_" in n ]
+    if len(matching_names) != 1:
+        raise ValueError("Expected to find one NPC class starting with 'Knight_', 'Archer_' or 'Wizard_'")
+    npc_class = mod.__dict__[matching_names[0]]
 
+    return npc_class
+
+Knight_TeamA = import_npc(KNIGHT_A_SRC)
+Archer_TeamA = import_npc(ARCHER_A_SRC)
+Wizard_TeamA = import_npc(WIZARD_A_SRC)
+
+Knight_TeamB = import_npc(KNIGHT_B_SRC)
+Archer_TeamB = import_npc(ARCHER_B_SRC)
+Wizard_TeamB = import_npc(WIZARD_B_SRC)
 
 class World(object):
     def __init__(self):
