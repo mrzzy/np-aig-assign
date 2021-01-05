@@ -7,6 +7,7 @@ SHOW_PATHS = bool(os.environ.get("SHOW_PATHS", default=False))
 SHOW_SPLASH = bool(os.environ.get("SHOW_SPLASH", default=False))
 SPEED_MULTIPLIER = float(os.environ.get("SPEED_MULTIPLIER", default=1.0))
 
+# sets the difficulty of red team
 DIFFICULTY = str(os.environ.get("DIFFICULTY", default="easy"))
 if DIFFICULTY not in ["easy", "hard"]:
     raise NotImplementedError(f"Unsupported difficulty: {DIFFICULTY}")
@@ -18,11 +19,16 @@ RED_MULTIPLIER = 1.0 if DIFFICULTY == "easy" else 1.15
 NPC_A_SRCS = os.environ.get(
     "NPC_A_SRCS", "Knight_TeamA.py,Archer_TeamA.py,Wizard_TeamA.py"
 ).split(",")
+
 NPC_B_SRCS = os.environ.get(
     "NPC_B_SRCS", "Knight_TeamB.py,Archer_TeamB.py,Wizard_TeamB.py"
 ).split(",")
 KNIGHT_A_SRC, ARCHER_A_SRC, WIZARD_A_SRC = NPC_A_SRCS
 KNIGHT_B_SRC, ARCHER_B_SRC, WIZARD_B_SRC = NPC_B_SRCS
+
+# whether to run the game in real time.
+# if False, will skip the wait time between frames, running the game at faster pace
+REAL_TIME=bool(os.environ.get("REAL_TIME", default=False))
 
 ## Game Settings
 SCREEN_WIDTH = 1024

@@ -565,12 +565,20 @@ def run():
 
         # check for end of game
         if not world.game_end:
-            time_passed = clock.tick(30)
+            if REAL_TIME:
+                time_passed = clock.tick(30)
+            else:
+                # simulate 30fps without waiting for it
+                # this should allow the game to run at faster pace
+                time_passed = 1000 // 30
+
             world.process(time_passed)
 
         world.render(screen)
 
         pygame.display.update()
+
+    return world.scores
 
 
 if __name__ == "__main__":
