@@ -1,9 +1,14 @@
-DEBUG = False
-SHOW_PATHS = False
-SHOW_SPLASH = True
-SPEED_MULTIPLIER = 1.0
+import os
 
-RED_MULTIPLIER = 1.0  # Set this to 1.0 for Easy Mode
+DEBUG = bool(os.environ.get("DEBUG", default=False))
+SHOW_PATHS = bool(os.environ.get("SHOW_PATHS", default=False))
+SHOW_SPLASH = bool(os.environ.get("SHOW_SPLASH", default=False))
+SPEED_MULTIPLIER = float(os.environ.get("SPEED_MULTIPLIER", default=1.0))
+
+DIFFICULTY=str(os.environ.get("DIFFICULTY", default="easy"))
+if DIFFICULTY not in ["easy", "hard"]:
+    raise NotImplementedError(f"Unsupported difficulty: {DIFFICULTY}")
+RED_MULTIPLIER = 1.0 if DIFFICULTY == "easy" else 1.15 # Set this to 1.0 for Easy Mode
 # Set this to 1.15 for Hard Mode
 
 SCREEN_WIDTH = 1024
