@@ -28,13 +28,17 @@ KNIGHT_B_SRC, ARCHER_B_SRC, WIZARD_B_SRC = NPC_B_SRCS
 
 # whether to run the game in real time.
 # if False, will skip the wait time between frames, running the game at faster pace
-REAL_TIME=bool(os.environ.get("REAL_TIME", default=False))
+REAL_TIME = bool(os.environ.get("REAL_TIME", default=False))
 
 # whether to run the game in headless mode
-# if True, configures PyGame to use a dummy video driver that does not create a window.
-HEADLESS=bool(os.environ.get("HEADLESS", default=True))
+# if True:
+# - configures PyGame to use a dummy video driver that does not create a window.
+# - automatically disables the splash screen.
+# - allows the game to exit without user interaction.
+HEADLESS = bool(os.environ.get("HEADLESS", default=True))
 if HEADLESS:
     os.environ["SDL_VIDEODRIVER"] = "dummy"
+    SHOW_SPLASH = False
 
 ## Game Settings
 SCREEN_WIDTH = 1024

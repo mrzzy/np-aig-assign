@@ -17,6 +17,7 @@ from Orc import *
 from Tower import *
 from Base import *
 
+
 def import_npc(path):
     """
     Imports the Game AI the python source at path
@@ -27,12 +28,17 @@ def import_npc(path):
     mod_spec.loader.exec_module(mod)
 
     # unpack npc class from module
-    matching_names = [ n for n in dir(mod) if "Knight_" in n or "Archer_" in n or "Wizard_" in n ]
+    matching_names = [
+        n for n in dir(mod) if "Knight_" in n or "Archer_" in n or "Wizard_" in n
+    ]
     if len(matching_names) != 1:
-        raise ValueError("Expected to find one NPC class starting with 'Knight_', 'Archer_' or 'Wizard_'")
+        raise ValueError(
+            "Expected to find one NPC class starting with 'Knight_', 'Archer_' or 'Wizard_'"
+        )
     npc_class = mod.__dict__[matching_names[0]]
 
     return npc_class
+
 
 Knight_TeamA = import_npc(KNIGHT_A_SRC)
 Archer_TeamA = import_npc(ARCHER_A_SRC)
@@ -41,6 +47,7 @@ Wizard_TeamA = import_npc(WIZARD_A_SRC)
 Knight_TeamB = import_npc(KNIGHT_B_SRC)
 Archer_TeamB = import_npc(ARCHER_B_SRC)
 Wizard_TeamB = import_npc(WIZARD_B_SRC)
+
 
 class World(object):
     def __init__(self):
@@ -573,9 +580,13 @@ def run():
                 time_passed = 1000 // 30
 
             world.process(time_passed)
+        else:
+            # end of game
+            # exit game automatically in headless mode
+            if HEADLESS:
+                break
 
         world.render(screen)
-
         pygame.display.update()
 
     return world.scores
