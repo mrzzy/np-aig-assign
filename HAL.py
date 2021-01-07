@@ -1,3 +1,4 @@
+import sys
 import pygame
 from pygame.locals import *
 
@@ -697,6 +698,11 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
         # save recording and upload with logger
         camera.export(RECORDING_PATH)
         log.file(RECORDING_PATH)
+
+        if "win" in world.game_result:
+            win_team, _ = world.game_result.split()
+            if win_team == TEAM_NAME[1] and RED_WIN_NONZERO_STATUS:
+                sys.exit(1)
 
 
 if __name__ == "__main__":
