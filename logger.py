@@ -70,10 +70,10 @@ class NOPLogger(Logger):
     def params(self, param_map):
         pass
 
-    def metric(self, name, value):
+    def metric(self, name, value, step=None):
         pass
 
-    def metrics(self, metric_map):
+    def metrics(self, metric_map, step=None):
         pass
 
 
@@ -88,8 +88,8 @@ class MLFlowLogger(Logger):
     def params(self, param_map):
         mlflow.log_params(param_map)
 
-    def metric(self, name, value):
-        mlflow.log_metric(name, value)
+    def metric(self, name, value, step=None):
+        mlflow.log_metric(name, value, step)
 
-    def metrics(self, metric_map):
-        mlflow.log_metrics(metric_map)
+    def metrics(self, metric_map, step=None):
+        mlflow.log_metrics(metric_map, step)
