@@ -397,14 +397,24 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
         red_orc_image = pygame.image.load("assets/red_orc_32_32.png").convert_alpha()
         red_tower_image = pygame.image.load("assets/red_tower.png").convert_alpha()
         red_rock_image = pygame.image.load("assets/red_rock.png").convert_alpha()
-        red_knight_image = pygame.image.load("assets/red_knight_32_32.png").convert_alpha()
-        red_archer_image = pygame.image.load("assets/red_archer_32_32.png").convert_alpha()
+        red_knight_image = pygame.image.load(
+            "assets/red_knight_32_32.png"
+        ).convert_alpha()
+        red_archer_image = pygame.image.load(
+            "assets/red_archer_32_32.png"
+        ).convert_alpha()
         red_arrow_image = pygame.image.load("assets/red_arrow.png").convert_alpha()
-        red_wizard_image = pygame.image.load("assets/red_wizard_32_32.png").convert_alpha()
-        red_explosion_image = pygame.image.load("assets/red_explosion.png").convert_alpha()
+        red_wizard_image = pygame.image.load(
+            "assets/red_wizard_32_32.png"
+        ).convert_alpha()
+        red_explosion_image = pygame.image.load(
+            "assets/red_explosion.png"
+        ).convert_alpha()
 
         grey_tower_image = pygame.image.load("assets/grey_tower.png").convert_alpha()
-        grey_projectile_image = pygame.image.load("assets/grey_rock.png").convert_alpha()
+        grey_projectile_image = pygame.image.load(
+            "assets/grey_rock.png"
+        ).convert_alpha()
         mountain_image_1 = pygame.image.load("assets/mountain_1.png").convert_alpha()
         mountain_image_2 = pygame.image.load("assets/mountain_2.png").convert_alpha()
         plateau_image = pygame.image.load("assets/plateau.png").convert_alpha()
@@ -678,9 +688,12 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
                 break
 
         print("Game has ended")
-        print("Final Score: ",
-              " ".join(f"{team}: {score}"
-                       for team, score in zip(TEAM_NAME, world.scores)))
+        print(
+            "Final Score: ",
+            " ".join(
+                f"{team}: {score}" for team, score in zip(TEAM_NAME, world.scores)
+            ),
+        )
         # save recording and upload with logger
         camera.export(RECORDING_PATH)
         log.file(RECORDING_PATH)

@@ -13,10 +13,10 @@ BLACK_FMT:=$(PY) -m black
 run: dep-pip
 	$(PY) HAL.py
 
-lint: deps
+lint: dep-pip
 	$(BLACK_FMT) --check .
 	
-format: deps
+format: dep-pip
 	$(BLACK_FMT) .
 
 # dependency targets

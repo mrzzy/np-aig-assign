@@ -65,14 +65,21 @@ class FFmpegCamera(Camera):
         # resolve absolute output path to pass to ffmpe.
         output_path = str(Path(path).resolve())
         # convert the frames into a video with FFmpeg
-        encode_run = subprocess.run([
-            "ffmpeg",
-            "-framerate", "30",
-            "-i",  "frame_%d.png",
-            output_path,
-        ], cwd=self.frames_dir)
+        encode_run = subprocess.run(
+            [
+                "ffmpeg",
+                "-framerate",
+                "30",
+                "-i",
+                "frame_%d.png",
+                output_path,
+            ],
+            cwd=self.frames_dir,
+        )
         if encode_run.returncode != 0:
-            raise Exception(f"FFmpeg failed to encode video from frames: \n{encode_run.stderr}")
+            raise Exception(
+                f"FFmpeg failed to encode video from frames: \n{encode_run.stderr}"
+            )
         # optionally clean up recorded frames
         if cleanup:
             rmtree(self.frames_dir)

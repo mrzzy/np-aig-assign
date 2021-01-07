@@ -59,7 +59,7 @@ MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "test")
 CAMERA = str(os.environ.get("CAMERA", default="NOPCamera"))
 
 # filepath to write the game recording video
-RECORDING_PATH=str(os.environ.get("RECORDING_PATH", "hal.mp4"))
+RECORDING_PATH = str(os.environ.get("RECORDING_PATH", "hal.mp4"))
 
 ## Game Settings
 SCREEN_WIDTH = 1024

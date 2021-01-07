@@ -81,6 +81,7 @@ class Logger(ABC):
         """
         pass
 
+
 class NOPLogger(Logger):
     """
     Defines a do nothing Logger.
@@ -121,6 +122,7 @@ class MLFlowLogger(Logger):
 
     def __enter__(self):
         mlflow.start_run()
+
     def __exit__(self, exc_type, exc_value, traceback):
         mlflow.end_run()
 
@@ -144,5 +146,6 @@ class MLFlowLogger(Logger):
 
     def file(self, path):
         mlflow.log_artifact(path)
+
 
 loggers = {"NOPLogger": NOPLogger, "MLFlowLogger": MLFlowLogger}
