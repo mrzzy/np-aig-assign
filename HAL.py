@@ -65,7 +65,6 @@ class World(object):
         self.generate_pathfinding_graphs("pathfinding_graph.txt")
         self.scores = [0, 0]
         self.metrics_step = 0
-        self.metrics_wait_secs = 0
         self.log = log
 
         self.countdown_timer = TIME_LIMIT
@@ -222,11 +221,8 @@ class World(object):
         # --- Reduces the overall countdown timer
         self.countdown_timer -= time_passed_seconds
 
-        # log game entity metrics every METRICS_RESOLUTION_SECS
-        self.metrics_wait_secs -= time_passed_seconds
-        if self.metrics_wait_secs <= 0:
-            self.log_metrics()
-            self.metrics_wait_secs = METRICS_RESOLUTION_SECS
+        # log game entity metrics
+        self.log_metrics()
 
         # --- Checks if game has ended due to running out of time ---
         if self.countdown_timer <= 0:

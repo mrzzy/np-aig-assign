@@ -40,10 +40,6 @@ if HEADLESS:
     os.environ["SDL_VIDEODRIVER"] = "dummy"
     SHOW_SPLASH = False
 
-# metrics resolution: wait time in seconds between sampling metrics
-# note that metrics is sampled on based on game time, not real time.
-METRICS_RESOLUTION_SECS = float(os.environ.get("METRICS_RESOLUTION_SECS", default=2.0))
-
 ## Game Settings
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 768
