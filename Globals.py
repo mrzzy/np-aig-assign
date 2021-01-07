@@ -40,6 +40,27 @@ if HEADLESS:
     os.environ["SDL_VIDEODRIVER"] = "dummy"
     SHOW_SPLASH = False
 
+# the name of the  logger to use to record game parameters and metrics
+# NOPLogger - does not log anything
+# MLFlowLogger - logs to MLFlows
+LOGGER = str(os.environ.get("LOGGER", default="NOPLogger"))
+
+# the URI to the MLFlow tracking instance to use when using MLFlowLogger
+os.environ["MLFLOw_TRACKING_URI"] = os.environ.get(
+    "MLFLOw_TRACKING_URI", default="http://aigmlflow.mrzzy.co"
+)
+
+# the name of the MLFlow experiment to use when using MLFlowLogger
+MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "test")
+
+# the name of the camera to use to record game frames
+# NOPCamera - does not record frames
+# FFmpegCameraa - records frames and stiches frames into a video using FFmpeg
+CAMERA = str(os.environ.get("CAMERA", default="FFmpegCamera"))
+
+# filepath to write the game recording video
+RECORDING_PATH=str(os.environ.get("RECORDING_PATH", "hal.mp4"))
+
 ## Game Settings
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 768

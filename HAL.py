@@ -17,7 +17,8 @@ from Orc import *
 from Tower import *
 from Base import *
 
-from logger import Logger, NOPLogger, MLFlowLogger
+from logger import loggers
+from camera import cameras
 
 
 def import_npc(path):
@@ -52,7 +53,7 @@ Wizard_TeamB = import_npc(WIZARD_B_SRC)
 
 
 class World(object):
-    def __init__(self, log: Logger):
+    def __init__(self, log):
 
         self.entities = {}
         self.entity_id = 0
@@ -342,280 +343,309 @@ class Obstacle(GameEntity):
         GameEntity.process(self, time_passed)
 
 
-def run(log: Logger = NOPLogger()):
+def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
     """
     Run the HAL game.
-    Uses the given logger to collect metrics from the game.
+    Uses the given logger to collect game parameters and metrics
+    and the given camera to record game frames.
     """
 
     # log game parameters
-    log.params(
-        {
-            "debug": DEBUG,
-            "show_paths": SHOW_PATHS,
-            "show_splash": SHOW_PATHS,
-            "red_multiplier": RED_MULTIPLIER,
-            "speed_multiplier": SPEED_MULTIPLIER,
-            "team_a_sources": NPC_A_SRCS,
-            "team_b_sources": NPC_B_SRCS,
-            "real_time": REAL_TIME,
-            "headless": HEADLESS,
-        }
-    )
+    with log:
+        log.params(
+            {
+                "debug": DEBUG,
+                "show_paths": SHOW_PATHS,
+                "show_splash": SHOW_SPLASH,
+                "red_multiplier": RED_MULTIPLIER,
+                "speed_multiplier": SPEED_MULTIPLIER,
+                "team_a_sources": NPC_A_SRCS,
+                "team_b_sources": NPC_B_SRCS,
+                "real_time": REAL_TIME,
+                "headless": HEADLESS,
+            }
+        )
 
-    pygame.init()
-    screen = pygame.display.set_mode(SCREEN_SIZE, 0, 32)
+        pygame.init()
+        screen = pygame.display.set_mode(SCREEN_SIZE, 0, 32)
 
-    world = World(log)
+        world = World(log)
 
-    w, h = SCREEN_SIZE
+        w, h = SCREEN_SIZE
 
-    # --- Load images ---
-    blue_base_image = pygame.image.load("assets/blue_base.png").convert_alpha()
-    blue_orc_image = pygame.image.load("assets/blue_orc_32_32.png").convert_alpha()
-    blue_tower_image = pygame.image.load("assets/blue_tower.png").convert_alpha()
-    blue_rock_image = pygame.image.load("assets/blue_rock.png").convert_alpha()
-    blue_knight_image = pygame.image.load(
-        "assets/blue_knight_32_32.png"
-    ).convert_alpha()
-    blue_archer_image = pygame.image.load(
-        "assets/blue_archer_32_32.png"
-    ).convert_alpha()
-    blue_arrow_image = pygame.image.load("assets/blue_arrow.png").convert_alpha()
-    blue_wizard_image = pygame.image.load(
-        "assets/blue_wizard_32_32.png"
-    ).convert_alpha()
-    blue_explosion_image = pygame.image.load(
-        "assets/blue_explosion.png"
-    ).convert_alpha()
+        # --- Load images ---
+        blue_base_image = pygame.image.load("assets/blue_base.png").convert_alpha()
+        blue_orc_image = pygame.image.load("assets/blue_orc_32_32.png").convert_alpha()
+        blue_tower_image = pygame.image.load("assets/blue_tower.png").convert_alpha()
+        blue_rock_image = pygame.image.load("assets/blue_rock.png").convert_alpha()
+        blue_knight_image = pygame.image.load(
+            "assets/blue_knight_32_32.png"
+        ).convert_alpha()
+        blue_archer_image = pygame.image.load(
+            "assets/blue_archer_32_32.png"
+        ).convert_alpha()
+        blue_arrow_image = pygame.image.load("assets/blue_arrow.png").convert_alpha()
+        blue_wizard_image = pygame.image.load(
+            "assets/blue_wizard_32_32.png"
+        ).convert_alpha()
+        blue_explosion_image = pygame.image.load(
+            "assets/blue_explosion.png"
+        ).convert_alpha()
 
-    red_base_image = pygame.image.load("assets/red_base.png").convert_alpha()
-    red_orc_image = pygame.image.load("assets/red_orc_32_32.png").convert_alpha()
-    red_tower_image = pygame.image.load("assets/red_tower.png").convert_alpha()
-    red_rock_image = pygame.image.load("assets/red_rock.png").convert_alpha()
-    red_knight_image = pygame.image.load("assets/red_knight_32_32.png").convert_alpha()
-    red_archer_image = pygame.image.load("assets/red_archer_32_32.png").convert_alpha()
-    red_arrow_image = pygame.image.load("assets/red_arrow.png").convert_alpha()
-    red_wizard_image = pygame.image.load("assets/red_wizard_32_32.png").convert_alpha()
-    red_explosion_image = pygame.image.load("assets/red_explosion.png").convert_alpha()
+        red_base_image = pygame.image.load("assets/red_base.png").convert_alpha()
+        red_orc_image = pygame.image.load("assets/red_orc_32_32.png").convert_alpha()
+        red_tower_image = pygame.image.load("assets/red_tower.png").convert_alpha()
+        red_rock_image = pygame.image.load("assets/red_rock.png").convert_alpha()
+        red_knight_image = pygame.image.load("assets/red_knight_32_32.png").convert_alpha()
+        red_archer_image = pygame.image.load("assets/red_archer_32_32.png").convert_alpha()
+        red_arrow_image = pygame.image.load("assets/red_arrow.png").convert_alpha()
+        red_wizard_image = pygame.image.load("assets/red_wizard_32_32.png").convert_alpha()
+        red_explosion_image = pygame.image.load("assets/red_explosion.png").convert_alpha()
 
-    grey_tower_image = pygame.image.load("assets/grey_tower.png").convert_alpha()
-    grey_projectile_image = pygame.image.load("assets/grey_rock.png").convert_alpha()
-    mountain_image_1 = pygame.image.load("assets/mountain_1.png").convert_alpha()
-    mountain_image_2 = pygame.image.load("assets/mountain_2.png").convert_alpha()
-    plateau_image = pygame.image.load("assets/plateau.png").convert_alpha()
+        grey_tower_image = pygame.image.load("assets/grey_tower.png").convert_alpha()
+        grey_projectile_image = pygame.image.load("assets/grey_rock.png").convert_alpha()
+        mountain_image_1 = pygame.image.load("assets/mountain_1.png").convert_alpha()
+        mountain_image_2 = pygame.image.load("assets/mountain_2.png").convert_alpha()
+        plateau_image = pygame.image.load("assets/plateau.png").convert_alpha()
 
-    # --- Initialize Blue buildings and units ---
-    blue_base = Base(world, blue_base_image, blue_orc_image, blue_rock_image, 0, 4)
-    blue_base.position = Vector2(68, 68)
-    blue_base.team_id = 0
-    blue_base.max_hp = BASE_MAX_HP
-    blue_base.min_target_distance = BASE_MIN_TARGET_DISTANCE
-    blue_base.projectile_range = BASE_PROJECTILE_RANGE
-    blue_base.projectile_speed = BASE_PROJECTILE_SPEED
-    blue_base.ranged_damage = BASE_RANGED_DAMAGE
-    blue_base.ranged_cooldown = BASE_RANGED_COOLDOWN
-    blue_base.current_hp = blue_base.max_hp
-    blue_base.brain.set_state("base_state")
-    world.add_entity(blue_base)
+        # --- Initialize Blue buildings and units ---
+        blue_base = Base(world, blue_base_image, blue_orc_image, blue_rock_image, 0, 4)
+        blue_base.position = Vector2(68, 68)
+        blue_base.team_id = 0
+        blue_base.max_hp = BASE_MAX_HP
+        blue_base.min_target_distance = BASE_MIN_TARGET_DISTANCE
+        blue_base.projectile_range = BASE_PROJECTILE_RANGE
+        blue_base.projectile_speed = BASE_PROJECTILE_SPEED
+        blue_base.ranged_damage = BASE_RANGED_DAMAGE
+        blue_base.ranged_cooldown = BASE_RANGED_COOLDOWN
+        blue_base.current_hp = blue_base.max_hp
+        blue_base.brain.set_state("base_state")
+        world.add_entity(blue_base)
 
-    blue_tower_1 = Tower(world, blue_tower_image, blue_rock_image)
-    blue_tower_1.position = Vector2(200, 100)
-    blue_tower_1.team_id = 0
-    blue_tower_1.max_hp = TOWER_MAX_HP
-    blue_tower_1.min_target_distance = TOWER_MIN_TARGET_DISTANCE
-    blue_tower_1.projectile_range = TOWER_PROJECTILE_RANGE
-    blue_tower_1.projectile_speed = TOWER_PROJECTILE_SPEED
-    blue_tower_1.ranged_damage = TOWER_RANGED_DAMAGE
-    blue_tower_1.ranged_cooldown = TOWER_RANGED_COOLDOWN
-    blue_tower_1.current_hp = blue_tower_1.max_hp
-    blue_tower_1.brain.set_state("tower_state")
-    world.add_entity(blue_tower_1)
+        blue_tower_1 = Tower(world, blue_tower_image, blue_rock_image)
+        blue_tower_1.position = Vector2(200, 100)
+        blue_tower_1.team_id = 0
+        blue_tower_1.max_hp = TOWER_MAX_HP
+        blue_tower_1.min_target_distance = TOWER_MIN_TARGET_DISTANCE
+        blue_tower_1.projectile_range = TOWER_PROJECTILE_RANGE
+        blue_tower_1.projectile_speed = TOWER_PROJECTILE_SPEED
+        blue_tower_1.ranged_damage = TOWER_RANGED_DAMAGE
+        blue_tower_1.ranged_cooldown = TOWER_RANGED_COOLDOWN
+        blue_tower_1.current_hp = blue_tower_1.max_hp
+        blue_tower_1.brain.set_state("tower_state")
+        world.add_entity(blue_tower_1)
 
-    blue_tower_2 = Tower(world, blue_tower_image, blue_rock_image)
-    blue_tower_2.position = Vector2(105, 190)
-    blue_tower_2.team_id = 0
-    blue_tower_2.max_hp = TOWER_MAX_HP
-    blue_tower_2.min_target_distance = TOWER_MIN_TARGET_DISTANCE
-    blue_tower_2.projectile_range = TOWER_PROJECTILE_RANGE
-    blue_tower_2.projectile_speed = TOWER_PROJECTILE_SPEED
-    blue_tower_2.ranged_damage = TOWER_RANGED_DAMAGE
-    blue_tower_2.ranged_cooldown = TOWER_RANGED_COOLDOWN
-    blue_tower_2.current_hp = blue_tower_2.max_hp
-    blue_tower_2.brain.set_state("tower_state")
-    world.add_entity(blue_tower_2)
+        blue_tower_2 = Tower(world, blue_tower_image, blue_rock_image)
+        blue_tower_2.position = Vector2(105, 190)
+        blue_tower_2.team_id = 0
+        blue_tower_2.max_hp = TOWER_MAX_HP
+        blue_tower_2.min_target_distance = TOWER_MIN_TARGET_DISTANCE
+        blue_tower_2.projectile_range = TOWER_PROJECTILE_RANGE
+        blue_tower_2.projectile_speed = TOWER_PROJECTILE_SPEED
+        blue_tower_2.ranged_damage = TOWER_RANGED_DAMAGE
+        blue_tower_2.ranged_cooldown = TOWER_RANGED_COOLDOWN
+        blue_tower_2.current_hp = blue_tower_2.max_hp
+        blue_tower_2.brain.set_state("tower_state")
+        world.add_entity(blue_tower_2)
 
-    blue_knight = Knight_TeamA(
-        world, blue_knight_image, blue_base, Vector2(blue_base.spawn_position)
-    )
-    blue_knight.team_id = 0
-    blue_knight.max_hp = KNIGHT_MAX_HP
-    blue_knight.maxSpeed = KNIGHT_MAX_SPEED
-    blue_knight.min_target_distance = KNIGHT_MIN_TARGET_DISTANCE
-    blue_knight.melee_damage = KNIGHT_MELEE_DAMAGE
-    blue_knight.melee_cooldown = KNIGHT_MELEE_COOLDOWN
-    blue_knight.current_hp = blue_knight.max_hp
-    world.add_entity(blue_knight)
+        blue_knight = Knight_TeamA(
+            world, blue_knight_image, blue_base, Vector2(blue_base.spawn_position)
+        )
+        blue_knight.team_id = 0
+        blue_knight.max_hp = KNIGHT_MAX_HP
+        blue_knight.maxSpeed = KNIGHT_MAX_SPEED
+        blue_knight.min_target_distance = KNIGHT_MIN_TARGET_DISTANCE
+        blue_knight.melee_damage = KNIGHT_MELEE_DAMAGE
+        blue_knight.melee_cooldown = KNIGHT_MELEE_COOLDOWN
+        blue_knight.current_hp = blue_knight.max_hp
+        world.add_entity(blue_knight)
 
-    blue_archer = Archer_TeamA(
-        world,
-        blue_archer_image,
-        blue_arrow_image,
-        blue_base,
-        Vector2(blue_base.spawn_position),
-    )
-    blue_archer.team_id = 0
-    blue_archer.max_hp = ARCHER_MAX_HP
-    blue_archer.maxSpeed = ARCHER_MAX_SPEED
-    blue_archer.min_target_distance = ARCHER_MIN_TARGET_DISTANCE
-    blue_archer.projectile_range = ARCHER_PROJECTILE_RANGE
-    blue_archer.projectile_speed = ARCHER_PROJECTILE_SPEED
-    blue_archer.ranged_damage = ARCHER_RANGED_DAMAGE
-    blue_archer.ranged_cooldown = ARCHER_RANGED_COOLDOWN
-    blue_archer.current_hp = blue_archer.max_hp
-    world.add_entity(blue_archer)
+        blue_archer = Archer_TeamA(
+            world,
+            blue_archer_image,
+            blue_arrow_image,
+            blue_base,
+            Vector2(blue_base.spawn_position),
+        )
+        blue_archer.team_id = 0
+        blue_archer.max_hp = ARCHER_MAX_HP
+        blue_archer.maxSpeed = ARCHER_MAX_SPEED
+        blue_archer.min_target_distance = ARCHER_MIN_TARGET_DISTANCE
+        blue_archer.projectile_range = ARCHER_PROJECTILE_RANGE
+        blue_archer.projectile_speed = ARCHER_PROJECTILE_SPEED
+        blue_archer.ranged_damage = ARCHER_RANGED_DAMAGE
+        blue_archer.ranged_cooldown = ARCHER_RANGED_COOLDOWN
+        blue_archer.current_hp = blue_archer.max_hp
+        world.add_entity(blue_archer)
 
-    blue_wizard = Wizard_TeamA(
-        world,
-        blue_wizard_image,
-        blue_rock_image,
-        blue_base,
-        Vector2(blue_base.spawn_position),
-        blue_explosion_image,
-    )
-    blue_wizard.team_id = 0
-    blue_wizard.max_hp = WIZARD_MAX_HP
-    blue_wizard.maxSpeed = WIZARD_MAX_SPEED
-    blue_wizard.min_target_distance = WIZARD_MIN_TARGET_DISTANCE
-    blue_wizard.projectile_range = WIZARD_PROJECTILE_RANGE
-    blue_wizard.projectile_speed = WIZARD_PROJECTILE_SPEED
-    blue_wizard.ranged_damage = WIZARD_RANGED_DAMAGE
-    blue_wizard.ranged_cooldown = WIZARD_RANGED_COOLDOWN
-    blue_wizard.current_hp = blue_wizard.max_hp
-    world.add_entity(blue_wizard)
+        blue_wizard = Wizard_TeamA(
+            world,
+            blue_wizard_image,
+            blue_rock_image,
+            blue_base,
+            Vector2(blue_base.spawn_position),
+            blue_explosion_image,
+        )
+        blue_wizard.team_id = 0
+        blue_wizard.max_hp = WIZARD_MAX_HP
+        blue_wizard.maxSpeed = WIZARD_MAX_SPEED
+        blue_wizard.min_target_distance = WIZARD_MIN_TARGET_DISTANCE
+        blue_wizard.projectile_range = WIZARD_PROJECTILE_RANGE
+        blue_wizard.projectile_speed = WIZARD_PROJECTILE_SPEED
+        blue_wizard.ranged_damage = WIZARD_RANGED_DAMAGE
+        blue_wizard.ranged_cooldown = WIZARD_RANGED_COOLDOWN
+        blue_wizard.current_hp = blue_wizard.max_hp
+        world.add_entity(blue_wizard)
 
-    # --- Initialize Red buildings and units ---
-    red_base = Base(world, red_base_image, red_orc_image, red_rock_image, 4, 0)
-    red_base.position = Vector2(SCREEN_WIDTH - 68, SCREEN_HEIGHT - 68)
-    red_base.team_id = 1
-    red_base.max_hp = BASE_MAX_HP * RED_MULTIPLIER
-    red_base.min_target_distance = BASE_MIN_TARGET_DISTANCE
-    red_base.projectile_range = BASE_PROJECTILE_RANGE
-    red_base.projectile_speed = BASE_PROJECTILE_SPEED
-    red_base.ranged_damage = BASE_RANGED_DAMAGE * RED_MULTIPLIER
-    red_base.ranged_cooldown = BASE_RANGED_COOLDOWN
-    red_base.current_hp = red_base.max_hp
-    red_base.brain.set_state("base_state")
-    world.add_entity(red_base)
+        # --- Initialize Red buildings and units ---
+        red_base = Base(world, red_base_image, red_orc_image, red_rock_image, 4, 0)
+        red_base.position = Vector2(SCREEN_WIDTH - 68, SCREEN_HEIGHT - 68)
+        red_base.team_id = 1
+        red_base.max_hp = BASE_MAX_HP * RED_MULTIPLIER
+        red_base.min_target_distance = BASE_MIN_TARGET_DISTANCE
+        red_base.projectile_range = BASE_PROJECTILE_RANGE
+        red_base.projectile_speed = BASE_PROJECTILE_SPEED
+        red_base.ranged_damage = BASE_RANGED_DAMAGE * RED_MULTIPLIER
+        red_base.ranged_cooldown = BASE_RANGED_COOLDOWN
+        red_base.current_hp = red_base.max_hp
+        red_base.brain.set_state("base_state")
+        world.add_entity(red_base)
 
-    red_tower_1 = Tower(world, red_tower_image, red_rock_image)
-    red_tower_1.position = Vector2(820, 660)
-    red_tower_1.team_id = 1
-    red_tower_1.max_hp = TOWER_MAX_HP * RED_MULTIPLIER
-    red_tower_1.min_target_distance = TOWER_MIN_TARGET_DISTANCE
-    red_tower_1.projectile_range = TOWER_PROJECTILE_RANGE
-    red_tower_1.projectile_speed = TOWER_PROJECTILE_SPEED
-    red_tower_1.ranged_damage = TOWER_RANGED_DAMAGE * RED_MULTIPLIER
-    red_tower_1.ranged_cooldown = TOWER_RANGED_COOLDOWN
-    red_tower_1.current_hp = red_tower_1.max_hp
-    red_tower_1.brain.set_state("tower_state")
-    world.add_entity(red_tower_1)
+        red_tower_1 = Tower(world, red_tower_image, red_rock_image)
+        red_tower_1.position = Vector2(820, 660)
+        red_tower_1.team_id = 1
+        red_tower_1.max_hp = TOWER_MAX_HP * RED_MULTIPLIER
+        red_tower_1.min_target_distance = TOWER_MIN_TARGET_DISTANCE
+        red_tower_1.projectile_range = TOWER_PROJECTILE_RANGE
+        red_tower_1.projectile_speed = TOWER_PROJECTILE_SPEED
+        red_tower_1.ranged_damage = TOWER_RANGED_DAMAGE * RED_MULTIPLIER
+        red_tower_1.ranged_cooldown = TOWER_RANGED_COOLDOWN
+        red_tower_1.current_hp = red_tower_1.max_hp
+        red_tower_1.brain.set_state("tower_state")
+        world.add_entity(red_tower_1)
 
-    red_tower_2 = Tower(world, red_tower_image, red_rock_image)
-    red_tower_2.position = Vector2(910, 570)
-    red_tower_2.team_id = 1
-    red_tower_2.max_hp = TOWER_MAX_HP * RED_MULTIPLIER
-    red_tower_2.min_target_distance = TOWER_MIN_TARGET_DISTANCE
-    red_tower_2.projectile_range = TOWER_PROJECTILE_RANGE
-    red_tower_2.projectile_speed = TOWER_PROJECTILE_SPEED
-    red_tower_2.ranged_damage = TOWER_RANGED_DAMAGE * RED_MULTIPLIER
-    red_tower_2.ranged_cooldown = TOWER_RANGED_COOLDOWN
-    red_tower_2.current_hp = red_tower_2.max_hp
-    red_tower_2.brain.set_state("tower_state")
-    world.add_entity(red_tower_2)
+        red_tower_2 = Tower(world, red_tower_image, red_rock_image)
+        red_tower_2.position = Vector2(910, 570)
+        red_tower_2.team_id = 1
+        red_tower_2.max_hp = TOWER_MAX_HP * RED_MULTIPLIER
+        red_tower_2.min_target_distance = TOWER_MIN_TARGET_DISTANCE
+        red_tower_2.projectile_range = TOWER_PROJECTILE_RANGE
+        red_tower_2.projectile_speed = TOWER_PROJECTILE_SPEED
+        red_tower_2.ranged_damage = TOWER_RANGED_DAMAGE * RED_MULTIPLIER
+        red_tower_2.ranged_cooldown = TOWER_RANGED_COOLDOWN
+        red_tower_2.current_hp = red_tower_2.max_hp
+        red_tower_2.brain.set_state("tower_state")
+        world.add_entity(red_tower_2)
 
-    red_knight = Knight_TeamB(
-        world, red_knight_image, red_base, Vector2(red_base.spawn_position)
-    )
-    red_knight.team_id = 1
-    red_knight.max_hp = KNIGHT_MAX_HP * RED_MULTIPLIER
-    red_knight.maxSpeed = KNIGHT_MAX_SPEED
-    red_knight.min_target_distance = KNIGHT_MIN_TARGET_DISTANCE
-    red_knight.melee_damage = KNIGHT_MELEE_DAMAGE * RED_MULTIPLIER
-    red_knight.melee_cooldown = KNIGHT_MELEE_COOLDOWN
-    red_knight.current_hp = red_knight.max_hp
-    world.add_entity(red_knight)
+        red_knight = Knight_TeamB(
+            world, red_knight_image, red_base, Vector2(red_base.spawn_position)
+        )
+        red_knight.team_id = 1
+        red_knight.max_hp = KNIGHT_MAX_HP * RED_MULTIPLIER
+        red_knight.maxSpeed = KNIGHT_MAX_SPEED
+        red_knight.min_target_distance = KNIGHT_MIN_TARGET_DISTANCE
+        red_knight.melee_damage = KNIGHT_MELEE_DAMAGE * RED_MULTIPLIER
+        red_knight.melee_cooldown = KNIGHT_MELEE_COOLDOWN
+        red_knight.current_hp = red_knight.max_hp
+        world.add_entity(red_knight)
 
-    red_archer = Archer_TeamB(
-        world,
-        red_archer_image,
-        red_arrow_image,
-        red_base,
-        Vector2(red_base.spawn_position),
-    )
-    red_archer.team_id = 1
-    red_archer.max_hp = ARCHER_MAX_HP * RED_MULTIPLIER
-    red_archer.maxSpeed = ARCHER_MAX_SPEED
-    red_archer.min_target_distance = ARCHER_MIN_TARGET_DISTANCE
-    red_archer.projectile_range = ARCHER_PROJECTILE_RANGE
-    red_archer.projectile_speed = ARCHER_PROJECTILE_SPEED
-    red_archer.ranged_damage = ARCHER_RANGED_DAMAGE * RED_MULTIPLIER
-    red_archer.ranged_cooldown = ARCHER_RANGED_COOLDOWN
-    red_archer.current_hp = red_archer.max_hp
-    world.add_entity(red_archer)
+        red_archer = Archer_TeamB(
+            world,
+            red_archer_image,
+            red_arrow_image,
+            red_base,
+            Vector2(red_base.spawn_position),
+        )
+        red_archer.team_id = 1
+        red_archer.max_hp = ARCHER_MAX_HP * RED_MULTIPLIER
+        red_archer.maxSpeed = ARCHER_MAX_SPEED
+        red_archer.min_target_distance = ARCHER_MIN_TARGET_DISTANCE
+        red_archer.projectile_range = ARCHER_PROJECTILE_RANGE
+        red_archer.projectile_speed = ARCHER_PROJECTILE_SPEED
+        red_archer.ranged_damage = ARCHER_RANGED_DAMAGE * RED_MULTIPLIER
+        red_archer.ranged_cooldown = ARCHER_RANGED_COOLDOWN
+        red_archer.current_hp = red_archer.max_hp
+        world.add_entity(red_archer)
 
-    red_wizard = Wizard_TeamB(
-        world,
-        red_wizard_image,
-        red_rock_image,
-        red_base,
-        Vector2(red_base.spawn_position),
-        red_explosion_image,
-    )
-    red_wizard.team_id = 1
-    red_wizard.max_hp = WIZARD_MAX_HP * RED_MULTIPLIER
-    red_wizard.maxSpeed = WIZARD_MAX_SPEED
-    red_wizard.min_target_distance = WIZARD_MIN_TARGET_DISTANCE
-    red_wizard.projectile_range = WIZARD_PROJECTILE_RANGE
-    red_wizard.projectile_speed = WIZARD_PROJECTILE_SPEED
-    red_wizard.ranged_damage = WIZARD_RANGED_DAMAGE * RED_MULTIPLIER
-    red_wizard.ranged_cooldown = WIZARD_RANGED_COOLDOWN
-    red_wizard.current_hp = red_wizard.max_hp
-    world.add_entity(red_wizard)
+        red_wizard = Wizard_TeamB(
+            world,
+            red_wizard_image,
+            red_rock_image,
+            red_base,
+            Vector2(red_base.spawn_position),
+            red_explosion_image,
+        )
+        red_wizard.team_id = 1
+        red_wizard.max_hp = WIZARD_MAX_HP * RED_MULTIPLIER
+        red_wizard.maxSpeed = WIZARD_MAX_SPEED
+        red_wizard.min_target_distance = WIZARD_MIN_TARGET_DISTANCE
+        red_wizard.projectile_range = WIZARD_PROJECTILE_RANGE
+        red_wizard.projectile_speed = WIZARD_PROJECTILE_SPEED
+        red_wizard.ranged_damage = WIZARD_RANGED_DAMAGE * RED_MULTIPLIER
+        red_wizard.ranged_cooldown = WIZARD_RANGED_COOLDOWN
+        red_wizard.current_hp = red_wizard.max_hp
+        world.add_entity(red_wizard)
 
-    # --- Initialize other entities in the world ---
-    mountain_1 = Obstacle(world, mountain_image_1)
-    mountain_1.position = Vector2(410, 460)
-    mountain_1.team_id = 2
-    world.add_entity(mountain_1)
-    world.obstacles.append(mountain_1)
+        # --- Initialize other entities in the world ---
+        mountain_1 = Obstacle(world, mountain_image_1)
+        mountain_1.position = Vector2(410, 460)
+        mountain_1.team_id = 2
+        world.add_entity(mountain_1)
+        world.obstacles.append(mountain_1)
 
-    mountain_2 = Obstacle(world, mountain_image_2)
-    mountain_2.position = Vector2(620, 280)
-    mountain_2.team_id = 2
-    world.add_entity(mountain_2)
-    world.obstacles.append(mountain_2)
+        mountain_2 = Obstacle(world, mountain_image_2)
+        mountain_2.position = Vector2(620, 280)
+        mountain_2.team_id = 2
+        world.add_entity(mountain_2)
+        world.obstacles.append(mountain_2)
 
-    plateau = Obstacle(world, plateau_image)
-    plateau.position = Vector2(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
-    plateau.team_id = 2
-    world.add_entity(plateau)
-    world.obstacles.append(plateau)
+        plateau = Obstacle(world, plateau_image)
+        plateau.position = Vector2(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
+        plateau.team_id = 2
+        world.add_entity(plateau)
+        world.obstacles.append(plateau)
 
-    grey_tower = Tower(world, grey_tower_image, grey_projectile_image)
-    grey_tower.position = Vector2(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 10)
-    grey_tower.team_id = 2
-    grey_tower.min_target_distance = GREY_TOWER_MIN_TARGET_DISTANCE
-    grey_tower.projectile_range = GREY_TOWER_PROJECTILE_RANGE
-    grey_tower.projectile_speed = GREY_TOWER_PROJECTILE_SPEED
-    grey_tower.ranged_damage = GREY_TOWER_RANGED_DAMAGE
-    grey_tower.ranged_cooldown = GREY_TOWER_RANGED_COOLDOWN
-    grey_tower.brain.set_state("tower_state")
-    world.add_entity(grey_tower)
+        grey_tower = Tower(world, grey_tower_image, grey_projectile_image)
+        grey_tower.position = Vector2(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 10)
+        grey_tower.team_id = 2
+        grey_tower.min_target_distance = GREY_TOWER_MIN_TARGET_DISTANCE
+        grey_tower.projectile_range = GREY_TOWER_PROJECTILE_RANGE
+        grey_tower.projectile_speed = GREY_TOWER_PROJECTILE_SPEED
+        grey_tower.ranged_damage = GREY_TOWER_RANGED_DAMAGE
+        grey_tower.ranged_cooldown = GREY_TOWER_RANGED_COOLDOWN
+        grey_tower.brain.set_state("tower_state")
+        world.add_entity(grey_tower)
 
-    # Splash screen
+        # Splash screen
 
-    if SHOW_SPLASH:
+        if SHOW_SPLASH:
+            while True:
+
+                for event in pygame.event.get():
+                    if event.type == QUIT:
+                        pygame.quit()
+                        quit()
+
+                pressed_keys = pygame.key.get_pressed()
+
+                if pressed_keys[K_SPACE]:
+                    break
+
+                screen.blit(world.background, (0, 0))
+                font = pygame.font.SysFont("arial", 60, True)
+
+                title = font.render("Heroes of Ancient Legends", True, (0, 255, 255))
+                screen.blit(title, (w // 2 - title.get_width() // 2, 100))
+                team1 = font.render(TEAM_NAME[0] + " (blue)", True, (0, 0, 255))
+                screen.blit(team1, (w // 2 - team1.get_width() // 2, 200))
+                vs = font.render("vs.", True, (0, 255, 255))
+                screen.blit(vs, (w // 2 - vs.get_width() // 2, 300))
+                team2 = font.render(TEAM_NAME[1] + " (red)", True, (255, 0, 0))
+                screen.blit(team2, (w // 2 - team2.get_width() // 2, 400))
+
+                pygame.display.update()
+
+        clock = pygame.time.Clock()
         while True:
 
             for event in pygame.event.get():
@@ -623,60 +653,37 @@ def run(log: Logger = NOPLogger()):
                     pygame.quit()
                     quit()
 
-            pressed_keys = pygame.key.get_pressed()
+                if pygame.mouse.get_pressed()[0]:
+                    print(pygame.mouse.get_pos())
 
-            if pressed_keys[K_SPACE]:
-                break
+            # check for end of game
+            if not world.game_end:
+                if REAL_TIME:
+                    time_passed = clock.tick(30)
+                else:
+                    # simulate 30fps without waiting for it
+                    # this should allow the game to run at faster pace
+                    time_passed = 1000 // 30
 
-            screen.blit(world.background, (0, 0))
-            font = pygame.font.SysFont("arial", 60, True)
+                world.process(time_passed)
 
-            title = font.render("Heroes of Ancient Legends", True, (0, 255, 255))
-            screen.blit(title, (w // 2 - title.get_width() // 2, 100))
-            team1 = font.render(TEAM_NAME[0] + " (blue)", True, (0, 0, 255))
-            screen.blit(team1, (w // 2 - team1.get_width() // 2, 200))
-            vs = font.render("vs.", True, (0, 255, 255))
-            screen.blit(vs, (w // 2 - vs.get_width() // 2, 300))
-            team2 = font.render(TEAM_NAME[1] + " (red)", True, (255, 0, 0))
-            screen.blit(team2, (w // 2 - team2.get_width() // 2, 400))
-
+            world.render(screen)
             pygame.display.update()
+            # record each game frame using camera
+            camera.record(screen)
 
-    clock = pygame.time.Clock()
-    while True:
-
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                pygame.quit()
-                quit()
-
-            if pygame.mouse.get_pressed()[0]:
-                print(pygame.mouse.get_pos())
-
-        # check for end of game
-        if not world.game_end:
-            if REAL_TIME:
-                time_passed = clock.tick(30)
-            else:
-                # simulate 30fps without waiting for it
-                # this should allow the game to run at faster pace
-                time_passed = 1000 // 30
-
-            world.process(time_passed)
-        else:
-            # end of game
             # exit game automatically in headless mode
-            if HEADLESS:
+            if world.game_end and HEADLESS:
                 break
 
-        world.render(screen)
-        pygame.display.update()
+        print("Game has ended")
+        print("Final Score: ",
+              " ".join(f"{team}: {score}"
+                       for team, score in zip(TEAM_NAME, world.final_scores)))
+        # save recording and upload with logger
+        camera.export(RECORDING_PATH)
+        log.file(RECORDING_PATH)
 
 
 if __name__ == "__main__":
-    import mlflow
-
-    mlflow.set_tracking_uri("http://aigmlflow.mrzzy.co")
-    mlflow.set_experiment("test")
-    with mlflow.start_run():
-        run(log=MLFlowLogger())
+    run()
