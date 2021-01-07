@@ -49,6 +49,7 @@ jobs:
           make run
 
   playtest-hard:
+    runs-on: ubuntu-20.04
     name: "Playtest vs Hard AI"
     env:
       DIFFICULTY: "hard"
