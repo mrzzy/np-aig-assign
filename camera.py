@@ -64,8 +64,6 @@ class FFmpegCamera(Camera):
     def export(self, path, cleanup=True):
         # resolve absolute output path to pass to ffmpe.
         output_path = str(Path(path).resolve())
-        print(output_path)
-        print(f"ffmpeg -framerate 30 -i frame_%d.png {output_path}")
         # convert the frames into a video with FFmpeg
         encode_run = subprocess.run([
             "ffmpeg",
@@ -73,7 +71,6 @@ class FFmpegCamera(Camera):
             "-i",  "frame_%d.png",
             output_path,
         ], cwd=self.frames_dir)
-        print(encode_run.stdout)
         if encode_run.returncode != 0:
             raise Exception(f"FFmpeg failed to encode video from frames: \n{encode_run.stderr}")
         # optionally clean up recorded frames

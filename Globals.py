@@ -46,8 +46,8 @@ if HEADLESS:
 LOGGER = str(os.environ.get("LOGGER", default="NOPLogger"))
 
 # the URI to the MLFlow tracking instance to use when using MLFlowLogger
-os.environ["MLFLOw_TRACKING_URI"] = os.environ.get(
-    "MLFLOw_TRACKING_URI", default="http://aigmlflow.mrzzy.co"
+os.environ["MLFLOW_TRACKING_URI"] = os.environ.get(
+    "MLFLOW_TRACKING_URI", default="http://aigmlflow.mrzzy.co"
 )
 
 # the name of the MLFlow experiment to use when using MLFlowLogger
@@ -56,7 +56,7 @@ MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "test")
 # the name of the camera to use to record game frames
 # NOPCamera - does not record frames
 # FFmpegCameraa - records frames and stiches frames into a video using FFmpeg
-CAMERA = str(os.environ.get("CAMERA", default="FFmpegCamera"))
+CAMERA = str(os.environ.get("CAMERA", default="NOPCamera"))
 
 # filepath to write the game recording video
 RECORDING_PATH=str(os.environ.get("RECORDING_PATH", "hal.mp4"))
@@ -68,7 +68,7 @@ SCREEN_SIZE = (SCREEN_WIDTH, SCREEN_HEIGHT)
 
 TIME_LIMIT = 180 * 1 / SPEED_MULTIPLIER
 
-TEAM_NAME = ["TeamA", "TeamB"]
+TEAM_NAME = str(os.environ.get("TEAM_NAME", default="TeamA,TeamB")).split(",")
 
 RESPAWN_TIME = 5.0 * 1 / SPEED_MULTIPLIER
 HEALING_COOLDOWN = 2.0 * 1 / SPEED_MULTIPLIER

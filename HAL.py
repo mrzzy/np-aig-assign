@@ -359,10 +359,11 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
                 "show_splash": SHOW_SPLASH,
                 "red_multiplier": RED_MULTIPLIER,
                 "speed_multiplier": SPEED_MULTIPLIER,
-                "team_a_sources": NPC_A_SRCS,
-                "team_b_sources": NPC_B_SRCS,
+                f"team_{TEAM_NAME[0]}_sources": NPC_A_SRCS,
+                f"team_{TEAM_NAME[0]}_sources": NPC_B_SRCS,
                 "real_time": REAL_TIME,
                 "headless": HEADLESS,
+                "team_names": TEAM_NAME,
             }
         )
 
@@ -679,7 +680,7 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
         print("Game has ended")
         print("Final Score: ",
               " ".join(f"{team}: {score}"
-                       for team, score in zip(TEAM_NAME, world.final_scores)))
+                       for team, score in zip(TEAM_NAME, world.scores)))
         # save recording and upload with logger
         camera.export(RECORDING_PATH)
         log.file(RECORDING_PATH)
