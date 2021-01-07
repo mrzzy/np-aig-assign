@@ -7,6 +7,7 @@ import mlflow
 from abc import ABC, abstractmethod
 from Globals import TEAM_NAME
 
+
 class Logger(ABC):
     """
     Defines an abstract logger that logs parameters, metrics, and artifacts
@@ -55,10 +56,11 @@ class Logger(ABC):
         Optionally provide a step to specify scores at different time steps.
         """
         self.metrics(
-            {
+            metric_map={
                 f"team_{TEAM_NAME[0]}_score": scores[0],
                 f"team_{TEAM_NAME[1]}_score": scores[1],
-            }
+            },
+            step=step,
         )
 
 
