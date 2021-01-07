@@ -1,0 +1,66 @@
+#
+# HAL
+# continuous integration (ci) pipeline
+#
+
+# see Globals.py for documentation on environment variable settings
+
+name: "CI Pipeline"
+on: push
+env:
+  REAL_TIME: "False"
+  HEADLESS: "True"
+  LOGGER: "MLFlowLogger"
+  CAMERA: "FFmpegCamera"
+  MLFLOW_EXPERIMENT: "test"
+  MLFLOW_TRACKING_URI: "http://aigmlflow.mrzzy.co"
+jobs:
+  lint:
+    runs-on: ubuntu-20.04
+    name: "Lint HAL source code"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: "Install dependencies"
+        run: |
+          make dep-pip
+      - name: "Lint bentobox-sdk"
+        run: |
+          make lint
+    
+  playtest-easy:
+    runs-on: ubuntu-20.04
+    name: "Playtest vs Easy AI"
+    env:
+      DIFFICULTY: "easy"
+      TEAM_NAME: "You,EasyAI"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: "Install dependencies"
+        run: |
+          make deps
+      - name: "Playtest against EasyAI"
+        run: |
+          make run
+
+  playtest-hard:
+    name: "Playtest vs Hard AI"
+    env:
+      DIFFICULTY: "hard"
+      TEAM_NAME: "You,HardAI"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: "Install dependencies"
+        run: |
+          make deps
+      - name: "Playtest against EasyAI"
+        run: |
+          make run
