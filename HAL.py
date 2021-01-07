@@ -64,7 +64,8 @@ class World(object):
         self.graph = Graph(self)
         self.generate_pathfinding_graphs("pathfinding_graph.txt")
         self.scores = [0, 0]
-        self.frame_step = 0
+        self.metrics_step = 0
+        self.metrics_wait_secs = 0
         self.log = log
 
         self.countdown_timer = TIME_LIMIT
@@ -160,26 +161,28 @@ class World(object):
         for entity in self.entities.values():
             # add team prefix if the entity belongs to a team
             team_prefix = (
-                f"team_{TEAM_NAME[entity.team_id]}" if entity.team_id != 2 else ""
+                f"team_{TEAM_NAME[entity.team_id]}_" if entity.team_id != 2 else ""
             )
-            entity_prefix = f"{team_prefix}_{entity.name}"
-            self.log.metrics(
-                metric_map={
-                    f"{entity_prefix}_position_x": entity.position.x,
-                    f"{entity_prefix}_position_y": entity.position.y,
-                    f"{entity_prefix}_velocity_x": entity.velocity.x,
-                    f"{entity_prefix}_velocity_y": entity.velocity.y,
-                    f"{entity_prefix}_state": entity.brain.active_state,
-                    f"{entity_prefix}_hp": entity.current_hp,
-                    f"{entity_prefix}_max_hp": entity.max_hp,
-                    f"{entity_prefix}_max_speed": entity.maxSpeed,
-                },
-                step=self.frame_step,
-            )
-            # log additional metrics for character entities
-            if isinstance(entity, Character):
+            entity_prefix = f"{team_prefix}{entity.name}_{entity.id}"
+
+            # only log metrics from controllable NPC entities  to speed up metrics collection
+            class_name = type(entity).__name__
+            if (
+                "Archer_" in class_name
+                or "Wizard_" in class_name
+                or "Knight_" in class_name
+            ):
                 self.log.metrics(
                     metric_map={
+                        f"{entity_prefix}_position_x": entity.position.x,
+                        f"{entity_prefix}_position_y": entity.position.y,
+                        f"{entity_prefix}_velocity_x": entity.velocity.x,
+                        f"{entity_prefix}_velocity_y": entity.velocity.y,
+                        # TODO: log current state machine state
+                        # f"{entity_prefix}_state": entity.brain.active_state.name,
+                        f"{entity_prefix}_hp": entity.current_hp,
+                        f"{entity_prefix}_max_hp": entity.max_hp,
+                        f"{entity_prefix}_max_speed": entity.maxSpeed,
                         # xp points
                         f"{entity_prefix}_xp": entity.xp,
                         f"{entity_prefix}_xp_next_level": entity.xp_to_next_level,
@@ -187,28 +190,30 @@ class World(object):
                         f"{entity_prefix}_healing_percentage": entity.healing_percentage,
                         f"{entity_prefix}_healing_cooldown": entity.healing_cooldown,
                     },
-                    step=self.frame_step,
+                    step=self.metrics_step,
                 )
-            class_name = type(entity).__name__
-            # log additional metrics for ranged characters
-            if "Archer_" in class_name or "Wizard_" in class_name:
-                self.log.metrics(
-                    metric_map={
-                        f"{entity_prefix}_ranged_damage": entity.ranged_damage,
-                        f"{entity_prefix}_ranged_cooldown": entity.ranged_cooldown,
-                        f"{entity_prefix}_projectile_range": entity.projectile_range,
-                    }
-                )
-            # log additional metrics for melee characters
-            elif "Knight_" in class_name:
-                self.log.metrics(
-                    {
-                        f"{entity_prefix}_melee_damage": entity.melee_damage,
-                        f"{entity_prefix}_melee_cooldown": entity.melee_cooldown,
-                    }
-                )
+                # log additional metrics for ranged characters
+                if "Archer_" in class_name or "Wizard_" in class_name:
+                    self.log.metrics(
+                        metric_map={
+                            f"{entity_prefix}_ranged_damage": entity.ranged_damage,
+                            f"{entity_prefix}_ranged_cooldown": entity.ranged_cooldown,
+                            f"{entity_prefix}_projectile_range": entity.projectile_range,
+                        }
+                    )
+                # log additional metrics for melee characters
+                elif "Knight_" in class_name:
+                    self.log.metrics(
+                        {
+                            f"{entity_prefix}_melee_damage": entity.melee_damage,
+                            f"{entity_prefix}_melee_cooldown": entity.melee_cooldown,
+                        }
+                    )
         # logs the current score
-        self.log.scores(self.scores, step=self.frame_step)
+        self.log.scores(self.scores, step=self.metrics_step)
+
+        # advance metrics step
+        self.metrics_step += 1
 
     def process(self, time_passed):
 
@@ -219,8 +224,13 @@ class World(object):
         # --- Reduces the overall countdown timer
         self.countdown_timer -= time_passed_seconds
 
-        # log game entity metrics
-        self.log_metrics()
+        # log game entity metrics every METRICS_RESOLUTION_SECS
+        self.metrics_wait_secs -= time_passed_seconds
+        if self.metrics_wait_secs <= 0:
+            self.log_metrics()
+            self.metrics_wait_secs = METRICS_RESOLUTION_SECS
+            print(self.metrics_wait_secs)
+            print("LOG METRICS")
 
         # --- Checks if game has ended due to running out of time ---
         if self.countdown_timer <= 0:
@@ -235,9 +245,6 @@ class World(object):
             else:
                 self.game_result = "DRAW"
                 self.final_scores = str(self.scores[0]) + " - " + str(self.scores[1])
-
-        # advance game frame counter
-        self.frame_step += 1
 
     def render(self, surface):
 
@@ -675,4 +682,9 @@ def run(log: Logger = NOPLogger()):
 
 
 if __name__ == "__main__":
-    run()
+    import mlflow
+
+    mlflow.set_tracking_uri("http://aigmlflow.mrzzy.co")
+    mlflow.set_experiment("test")
+    with mlflow.start_run():
+        run(log=MLFlowLogger())
