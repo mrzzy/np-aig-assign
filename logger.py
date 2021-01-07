@@ -1,6 +1,6 @@
 #
 # NP AIG Assignment 1
-# Run multiple trials of HAL and aggregate metrics
+# Logger
 #
 
 import mlflow
@@ -12,9 +12,6 @@ class Logger(ABC):
     """
     Defines an abstract logger that logs parameters, metrics, and artifacts
     """
-
-    def __init__(self):
-        super().__init__()
 
     @abstractmethod
     def param(self, name, value):
@@ -45,6 +42,13 @@ class Logger(ABC):
         Log the given metrics dictionary with keys as the name of the metric
         and value as the value of the metric.
         Optionally provide a step to specify metrics at different time steps.
+        """
+        pass
+
+    @abstractmethod
+    def file(self, path):
+        """
+        Log the file a the given path.
         """
         pass
 
@@ -81,6 +85,8 @@ class NOPLogger(Logger):
     def metrics(self, metric_map, step=None):
         pass
 
+    def file(self, path):
+        pass
 
 class MLFlowLogger(Logger):
     """
@@ -109,3 +115,8 @@ class MLFlowLogger(Logger):
     def metrics(self, metric_map, step=None):
         for k, v in metric_map.items():
             self.metric(k, v, step)
+
+    def file(self, path):
+        mlflow.log_artifact(path)
+
+loggers = {"NOPLogger": NOPLogger, "MLFlowLogger": MLFlowLogger}
