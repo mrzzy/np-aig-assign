@@ -199,15 +199,17 @@ class World(object):
                             f"{entity_prefix}_ranged_damage": entity.ranged_damage,
                             f"{entity_prefix}_ranged_cooldown": entity.ranged_cooldown,
                             f"{entity_prefix}_projectile_range": entity.projectile_range,
-                        }
+                        },
+                        step=self.metrics_step,
                     )
                 # log additional metrics for melee characters
                 elif "Knight_" in class_name:
                     self.log.metrics(
-                        {
+                        metric_map={
                             f"{entity_prefix}_melee_damage": entity.melee_damage,
                             f"{entity_prefix}_melee_cooldown": entity.melee_cooldown,
-                        }
+                        },
+                        step=self.metrics_step,
                     )
         # logs the current score
         self.log.scores(self.scores, step=self.metrics_step)
@@ -229,8 +231,6 @@ class World(object):
         if self.metrics_wait_secs <= 0:
             self.log_metrics()
             self.metrics_wait_secs = METRICS_RESOLUTION_SECS
-            print(self.metrics_wait_secs)
-            print("LOG METRICS")
 
         # --- Checks if game has ended due to running out of time ---
         if self.countdown_timer <= 0:

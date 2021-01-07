@@ -12,6 +12,9 @@ class Logger(ABC):
     Defines an abstract logger that logs parameters, metrics, and artifacts
     """
 
+    def __init__(self):
+        super().__init__()
+
     @abstractmethod
     def param(self, name, value):
         """
@@ -80,16 +83,27 @@ class NOPLogger(Logger):
 class MLFlowLogger(Logger):
     """
     Defines a Logger that logs to MLFlow.
+    Since networks calls to log to MLFlow are expensive, only logs metrics to MLFlow if they change.
     """
+
+    def __init__(self):
+        super().__init__()
+        self.prev_metrics = {}
 
     def param(self, name, value):
         mlflow.log_param(name, value)
 
     def params(self, param_map):
-        mlflow.log_params(param_map)
+        for k, v in param_map.items():
+            self.param(k, v)
 
     def metric(self, name, value, step=None):
+        # check for change in metrics before logging to mlflow
+        if name in self.prev_metrics and self.prev_metrics[name] == value:
+            return
         mlflow.log_metric(name, value, step)
+        self.prev_metrics[name] = value
 
     def metrics(self, metric_map, step=None):
-        mlflow.log_metrics(metric_map, step)
+        for k, v in metric_map.items():
+            self.metric(k, v, step)
