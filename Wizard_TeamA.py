@@ -7,35 +7,10 @@ from Graph import *
 from Character import *
 from State import *
 
-# World extensions
-def entity_is_hostile(entity, team_id):
-    if entity.team_id == team_id:
-        return False
+from World_Ext import *
 
-    if entity.team_id == 2 and entity.name != "tower":
-        return False
-
-    return True
-
-
-def entity_is_immediate_threat(entity, victim_entity):
-    # Ignore entities that are on the same team
-    if entity.team_id == victim_entity.team_id:
-        return False
-
-    if entity.name == "projectile" or entity.name == "explosion":
-        return True
-
-    # TODO(joeltio): Any hostile that is close to the entity is a threat as well
-    if entity.name == "knight" and entity_is_in_radius(entity, victim_entity, 100):
-        return True
-
-    return False
-
-
-def entity_is_in_radius(entity, source_entity, radius):
-    return (source_entity.position - entity.position).length() <= radius
-
+# Assume no enemy will have a ranged attack upgraded beyond 5 levels
+FLEE_RADIUS = 220 * 1.1 ** 5
 
 class Wizard_TeamA(Character):
     def __init__(
@@ -104,31 +79,6 @@ class Wizard_TeamA(Character):
         if self.can_level_up():
             choice = randint(0, len(level_up_stats) - 1)
             self.level_up("ranged cooldown")
-
-
-def dodge_imm_threat_vec(threat, entity):
-    if threat.name == "projectile":
-        # Move perpendicular to the direction of the projectile
-        # When a vector is perpendicular to another vector, the dot product is
-        # zero. We can pick a random value for the other vector's x (1). Solving
-        # with this information we get this formula: y2 = -x1/y1
-        x1, y1 = threat.velocity
-        return Vector2(
-            1,
-            -x1/y1
-        ).normalize()
-
-    # Assume it is an explosion otherwise
-    # Flee away
-    return (entity.position - threat.position).normalize()
-
-
-def dodge_opponent_vec(opp_character, entity):
-    # TODO(joeltio): Knights can still trap enemies at an edge
-    return (entity.position - opp_character.position).normalize()
-
-# Assume no enemy will have a ranged attack upgraded beyond 5 levels
-FLEE_RADIUS = 220 * 1.1 ** 5
 
 
 class WizardStateSeeking_TeamA(State):
@@ -253,14 +203,14 @@ class WizardStateFleeing_TeamA(State):
         hostile_entities = [
             e for e in
             self.wizard.world.entities.values()
-            if entity_is_in_radius(e, self.wizard, FLEE_RADIUS)
-                and entity_is_hostile(e, self.wizard.team_id)
+            if is_in_radius(e, self.wizard, FLEE_RADIUS)
+                and is_hostile(e, self.wizard)
         ]
 
         # Dodge immediate threats
         immediate_threats = [
             e for e in hostile_entities
-            if entity_is_immediate_threat(e, self.wizard)
+            if is_immediate_threat(self.wizard, e)
         ]
         if immediate_threats:
             print("fleeing from:", [x.name for x in immediate_threats])
@@ -270,9 +220,7 @@ class WizardStateFleeing_TeamA(State):
         self.wizard.flee_targets = immediate_threats
 
         # Calculate the flee direction from all the threats
-        final_direction = Vector2(0, 0)
-        for e in immediate_threats:
-            final_direction += dodge_imm_threat_vec(e, self.wizard)
+        final_direction = avoid_entities(self.wizard, immediate_threats)
 
         # Flee
         self.wizard.velocity = final_direction
