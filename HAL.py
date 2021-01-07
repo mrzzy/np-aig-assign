@@ -162,7 +162,7 @@ class World(object):
             team_prefix = (
                 f"team_{TEAM_NAME[entity.team_id]}_" if entity.team_id != 2 else ""
             )
-            entity_prefix = f"{team_prefix}{entity.name}_{entity.id}"
+            entity_prefix = f"{team_prefix}{entity.name}"
 
             # only log metrics from controllable NPC entities  to speed up metrics collection
             class_name = type(entity).__name__
