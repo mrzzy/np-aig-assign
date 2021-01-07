@@ -17,6 +17,8 @@ from Orc import *
 from Tower import *
 from Base import *
 
+from logger import Logger, NOPLogger, MLFlowLogger
+
 
 def import_npc(path):
     """
@@ -50,7 +52,7 @@ Wizard_TeamB = import_npc(WIZARD_B_SRC)
 
 
 class World(object):
-    def __init__(self):
+    def __init__(self, log: Logger):
 
         self.entities = {}
         self.entity_id = 0
@@ -62,6 +64,8 @@ class World(object):
         self.graph = Graph(self)
         self.generate_pathfinding_graphs("pathfinding_graph.txt")
         self.scores = [0, 0]
+        self.frame_step = 0
+        self.log = log
 
         self.countdown_timer = TIME_LIMIT
         self.game_end = False
@@ -151,6 +155,61 @@ class World(object):
         else:
             return None
 
+    def log_metrics(self):
+        # -- log game world metrics to logger
+        for entity in self.entities.values():
+            # add team prefix if the entity belongs to a team
+            team_prefix = (
+                f"team_{TEAM_NAME[entity.team_id]}" if entity.team_id != 2 else ""
+            )
+            entity_prefix = f"{team_prefix}_{entity.name}"
+            self.log.metrics(
+                metric_map={
+                    f"{entity_prefix}_position_x": entity.position.x,
+                    f"{entity_prefix}_position_y": entity.position.y,
+                    f"{entity_prefix}_velocity_x": entity.velocity.x,
+                    f"{entity_prefix}_velocity_y": entity.velocity.y,
+                    f"{entity_prefix}_state": entity.brain.active_state,
+                    f"{entity_prefix}_hp": entity.current_hp,
+                    f"{entity_prefix}_max_hp": entity.max_hp,
+                    f"{entity_prefix}_max_speed": entity.maxSpeed,
+                },
+                step=self.frame_step,
+            )
+            # log additional metrics for character entities
+            if isinstance(entity, Character):
+                self.log.metrics(
+                    metric_map={
+                        # xp points
+                        f"{entity_prefix}_xp": entity.xp,
+                        f"{entity_prefix}_xp_next_level": entity.xp_to_next_level,
+                        # level uppable attributes
+                        f"{entity_prefix}_healing_percentage": entity.healing_percentage,
+                        f"{entity_prefix}_healing_cooldown": entity.healing_cooldown,
+                    },
+                    step=self.frame_step,
+                )
+            class_name = type(entity).__name__
+            # log additional metrics for ranged characters
+            if "Archer_" in class_name or "Wizard_" in class_name:
+                self.log.metrics(
+                    metric_map={
+                        f"{entity_prefix}_ranged_damage": entity.ranged_damage,
+                        f"{entity_prefix}_ranged_cooldown": entity.ranged_cooldown,
+                        f"{entity_prefix}_projectile_range": entity.projectile_range,
+                    }
+                )
+            # log additional metrics for melee characters
+            elif "Knight_" in class_name:
+                self.log.metrics(
+                    {
+                        f"{entity_prefix}_melee_damage": entity.melee_damage,
+                        f"{entity_prefix}_melee_cooldown": entity.melee_cooldown,
+                    }
+                )
+        # logs the current score
+        self.log.scores(self.scores, step=self.frame_step)
+
     def process(self, time_passed):
 
         time_passed_seconds = time_passed / 1000.0
@@ -159,6 +218,9 @@ class World(object):
 
         # --- Reduces the overall countdown timer
         self.countdown_timer -= time_passed_seconds
+
+        # log game entity metrics
+        self.log_metrics()
 
         # --- Checks if game has ended due to running out of time ---
         if self.countdown_timer <= 0:
@@ -173,6 +235,9 @@ class World(object):
             else:
                 self.game_result = "DRAW"
                 self.final_scores = str(self.scores[0]) + " - " + str(self.scores[1])
+
+        # advance game frame counter
+        self.frame_step += 1
 
     def render(self, surface):
 
@@ -278,12 +343,31 @@ class Obstacle(GameEntity):
         GameEntity.process(self, time_passed)
 
 
-def run():
+def run(log: Logger = NOPLogger()):
+    """
+    Run the HAL game.
+    Uses the given logger to collect metrics from the game.
+    """
+
+    # log game parameters
+    log.params(
+        {
+            "debug": DEBUG,
+            "show_paths": SHOW_PATHS,
+            "show_splash": SHOW_PATHS,
+            "red_multiplier": RED_MULTIPLIER,
+            "speed_multiplier": SPEED_MULTIPLIER,
+            "team_a_sources": NPC_A_SRCS,
+            "team_b_sources": NPC_B_SRCS,
+            "real_time": REAL_TIME,
+            "headless": HEADLESS,
+        }
+    )
 
     pygame.init()
     screen = pygame.display.set_mode(SCREEN_SIZE, 0, 32)
 
-    world = World()
+    world = World(log)
 
     w, h = SCREEN_SIZE
 
@@ -588,8 +672,6 @@ def run():
 
         world.render(screen)
         pygame.display.update()
-
-    return world.scores
 
 
 if __name__ == "__main__":
