@@ -174,10 +174,6 @@ class World(object):
             ):
                 self.log.metrics(
                     metric_map={
-                        f"{entity_prefix}_position_x": entity.position.x,
-                        f"{entity_prefix}_position_y": entity.position.y,
-                        f"{entity_prefix}_velocity_x": entity.velocity.x,
-                        f"{entity_prefix}_velocity_y": entity.velocity.y,
                         # TODO: log current state machine state
                         # f"{entity_prefix}_state": entity.brain.active_state.name,
                         f"{entity_prefix}_hp": entity.current_hp,
