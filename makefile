@@ -10,14 +10,21 @@ BLACK_FMT:=$(PY) -m black
 .DEFAULT: run
 .PHONY: deps format run
 
-run: deps
+run: dep-pip
 	$(PY) HAL.py
-
-deps:
-	$(PIP) install -r requirements.txt
 
 lint: deps
 	$(BLACK_FMT) --check .
 	
 format: deps
 	$(BLACK_FMT) .
+
+# dependency targets
+deps: dep-pip dep-ffmpeg
+	
+dep-pip: 
+	$(PIP) install -r requirements.txt
+
+dep-ffmpeg:
+	sudo apt-get update
+	sudo apt-get install -y ffmpeg
