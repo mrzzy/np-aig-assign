@@ -5,7 +5,7 @@
 
 import mlflow
 from abc import ABC, abstractmethod
-
+from Globals import TEAM_NAME
 
 class Logger(ABC):
     """
@@ -56,8 +56,8 @@ class Logger(ABC):
         """
         self.metrics(
             {
-                "team_a_score": scores[0],
-                "team_b_score": scores[1],
+                f"team_{TEAM_NAME[0]}_score": scores[0],
+                f"team_{TEAM_NAME[1]}_score": scores[1],
             }
         )
 
