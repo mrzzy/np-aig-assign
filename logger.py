@@ -5,7 +5,7 @@
 
 import mlflow
 from abc import ABC, abstractmethod
-from Globals import TEAM_NAME
+from Globals import TEAM_NAME, MLFLOW_EXPERIMENT
 
 
 class Logger(ABC):
@@ -67,6 +67,19 @@ class Logger(ABC):
             step=step,
         )
 
+    @abstractmethod
+    def __enter__(self):
+        """
+        Start a logging run.
+        """
+        pass
+
+    @abstractmethod
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        End a logging run.
+        """
+        pass
 
 class NOPLogger(Logger):
     """
@@ -88,6 +101,13 @@ class NOPLogger(Logger):
     def file(self, path):
         pass
 
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
+
+
 class MLFlowLogger(Logger):
     """
     Defines a Logger that logs to MLFlow.
@@ -97,6 +117,12 @@ class MLFlowLogger(Logger):
     def __init__(self):
         super().__init__()
         self.prev_metrics = {}
+        mlflow.set_experiment(MLFLOW_EXPERIMENT)
+
+    def __enter__(self):
+        mlflow.start_run()
+    def __exit__(self, exc_type, exc_value, traceback):
+        mlflow.end_run()
 
     def param(self, name, value):
         mlflow.log_param(name, value)
