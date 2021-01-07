@@ -675,7 +675,7 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
                 else:
                     # simulate 30fps without waiting for it
                     # this should allow the game to run at faster pace
-                    time_passed = 1000 // 30
+                    time_passed = 1000 / 30
 
                 world.process(time_passed)
 
