@@ -36,7 +36,6 @@ prometheus-client==0.9.0
 prometheus-flask-exporter==0.18.1
 protobuf==3.14.0
 pycparser==2.20
-pyffmpeg==2.0.1
 pygame==1.9.6
 python-dateutil==2.8.1
 python-editor==1.0.4
