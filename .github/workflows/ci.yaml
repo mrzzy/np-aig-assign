@@ -67,6 +67,6 @@ jobs:
       - name: "Install dependencies"
         run: |
           make deps
-      - name: "Playtest against EasyAI"
+      - name: "Playtest against HardAI"
         run: |
           make run

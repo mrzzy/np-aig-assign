@@ -29,14 +29,14 @@ KNIGHT_B_SRC, ARCHER_B_SRC, WIZARD_B_SRC = NPC_B_SRCS
 
 # whether to run the game in real time.
 # if False, will skip the wait time between frames, running the game at faster pace
-REAL_TIME = bool(strtobool(os.environ.get("REAL_TIME", default=True)))
+REAL_TIME = bool(strtobool(os.environ.get("REAL_TIME", default="True")))
 
 # whether to run the game in headless mode
 # if True:
 # - configures PyGame to use a dummy video driver that does not create a window.
 # - automatically disables the splash screen.
 # - allows the game to exit without user interaction.
-HEADLESS = bool(strtobool(os.environ.get("HEADLESS", default=True)))
+HEADLESS = bool(strtobool(os.environ.get("HEADLESS", default="True")))
 if HEADLESS:
     os.environ["SDL_VIDEODRIVER"] = "dummy"
     SHOW_SPLASH = False
@@ -55,7 +55,7 @@ os.environ["MLFLOW_TRACKING_URI"] = os.environ.get(
 MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "test")
 
 # whether to return a non zero status if Team B/Red wins
-RED_WIN_NONZERO_STATUS = bool(strtobool(os.environ.get("RED_NONZERO_STATUS", "False")))
+RED_WIN_NONZERO_STATUS = bool(strtobool(os.environ.get("RED_NONZERO_STATUS", "True")))
 
 # the name of the camera to use to record game frames
 # NOPCamera - does not record frames

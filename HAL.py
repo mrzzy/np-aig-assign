@@ -359,6 +359,7 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
                 "show_paths": SHOW_PATHS,
                 "show_splash": SHOW_SPLASH,
                 "red_multiplier": RED_MULTIPLIER,
+                "red_win_nonzero_status": RED_WIN_NONZERO_STATUS,
                 "speed_multiplier": SPEED_MULTIPLIER,
                 f"team_{TEAM_NAME[0]}_sources": NPC_A_SRCS,
                 f"team_{TEAM_NAME[0]}_sources": NPC_B_SRCS,
@@ -690,7 +691,7 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
 
         print("Game has ended")
         print(
-            "Final Score: ",
+            "Final Score:",
             " ".join(
                 f"{team}: {score}" for team, score in zip(TEAM_NAME, world.scores)
             ),
