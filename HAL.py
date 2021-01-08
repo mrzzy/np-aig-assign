@@ -22,7 +22,7 @@ from Base import *
 from logger import loggers
 from camera import cameras
 
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 
 def import_npc(path):
@@ -351,7 +351,7 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
     """
 
     # log game parameters
-    with log, ProcessPoolExecutor(os.cpu_count() * 4) as threads:
+    with log, ThreadPoolExecutor(os.cpu_count() * 4) as threads:
         threads.submit(
             log.params,
             {
