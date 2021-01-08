@@ -68,6 +68,7 @@ class FFmpegCamera(Camera):
         encode_run = subprocess.run(
             [
                 "ffmpeg",
+                "-y",
                 "-framerate",
                 "30",
                 "-i",

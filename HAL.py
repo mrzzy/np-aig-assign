@@ -1,3 +1,4 @@
+import os
 import sys
 import pygame
 from pygame.locals import *
@@ -20,6 +21,8 @@ from Base import *
 
 from logger import loggers
 from camera import cameras
+
+from concurrent.futures import ThreadPoolExecutor
 
 
 def import_npc(path):
@@ -54,7 +57,7 @@ Wizard_TeamB = import_npc(WIZARD_B_SRC)
 
 
 class World(object):
-    def __init__(self, log):
+    def __init__(self):
 
         self.entities = {}
         self.entity_id = 0
@@ -66,8 +69,6 @@ class World(object):
         self.graph = Graph(self)
         self.generate_pathfinding_graphs("pathfinding_graph.txt")
         self.scores = [0, 0]
-        self.metrics_step = 0
-        self.log = log
 
         self.countdown_timer = TIME_LIMIT
         self.game_end = False
@@ -157,63 +158,6 @@ class World(object):
         else:
             return None
 
-    def log_metrics(self):
-        # -- log game world metrics to logger
-        for entity in self.entities.values():
-            # add team prefix if the entity belongs to a team
-            team_prefix = (
-                f"team_{TEAM_NAME[entity.team_id]}_" if entity.team_id != 2 else ""
-            )
-            entity_prefix = f"{team_prefix}{entity.name}"
-
-            # only log metrics from controllable NPC entities  to speed up metrics collection
-            class_name = type(entity).__name__
-            if (
-                "Archer_" in class_name
-                or "Wizard_" in class_name
-                or "Knight_" in class_name
-            ):
-                self.log.metrics(
-                    metric_map={
-                        # TODO: log current state machine state
-                        # f"{entity_prefix}_state": entity.brain.active_state.name,
-                        f"{entity_prefix}_hp": entity.current_hp,
-                        f"{entity_prefix}_max_hp": entity.max_hp,
-                        f"{entity_prefix}_max_speed": entity.maxSpeed,
-                        # xp points
-                        f"{entity_prefix}_xp": entity.xp,
-                        f"{entity_prefix}_xp_next_level": entity.xp_to_next_level,
-                        # level uppable attributes
-                        f"{entity_prefix}_healing_percentage": entity.healing_percentage,
-                        f"{entity_prefix}_healing_cooldown": entity.healing_cooldown,
-                    },
-                    step=self.metrics_step,
-                )
-                # log additional metrics for ranged characters
-                if "Archer_" in class_name or "Wizard_" in class_name:
-                    self.log.metrics(
-                        metric_map={
-                            f"{entity_prefix}_ranged_damage": entity.ranged_damage,
-                            f"{entity_prefix}_ranged_cooldown": entity.ranged_cooldown,
-                            f"{entity_prefix}_projectile_range": entity.projectile_range,
-                        },
-                        step=self.metrics_step,
-                    )
-                # log additional metrics for melee characters
-                elif "Knight_" in class_name:
-                    self.log.metrics(
-                        metric_map={
-                            f"{entity_prefix}_melee_damage": entity.melee_damage,
-                            f"{entity_prefix}_melee_cooldown": entity.melee_cooldown,
-                        },
-                        step=self.metrics_step,
-                    )
-        # logs the current score
-        self.log.scores(self.scores, step=self.metrics_step)
-
-        # advance metrics step
-        self.metrics_step += 1
-
     def process(self, time_passed):
 
         time_passed_seconds = time_passed / 1000.0
@@ -222,9 +166,6 @@ class World(object):
 
         # --- Reduces the overall countdown timer
         self.countdown_timer -= time_passed_seconds
-
-        # log game entity metrics
-        self.log_metrics()
 
         # --- Checks if game has ended due to running out of time ---
         if self.countdown_timer <= 0:
@@ -344,6 +285,64 @@ class Obstacle(GameEntity):
         GameEntity.process(self, time_passed)
 
 
+def log_metrics(world, log, metrics_step, threads):
+    # -- log game world metrics to logger
+    for entity in world.entities.values():
+        # add team prefix if the entity belongs to a team
+        team_prefix = (
+            f"team_{TEAM_NAME[entity.team_id]}_" if entity.team_id != 2 else ""
+        )
+        entity_prefix = f"{team_prefix}{entity.name}"
+
+        # only log metrics from controllable NPC entities  to speed up metrics collection
+        class_name = type(entity).__name__
+        if (
+            "Archer_" in class_name
+            or "Wizard_" in class_name
+            or "Knight_" in class_name
+        ):
+            threads.submit(
+                log.metrics,
+                metric_map={
+                    # TODO: log current state machine state
+                    # f"{entity_prefix}_state": entity.brain.active_state.name,
+                    f"{entity_prefix}_hp": entity.current_hp,
+                    f"{entity_prefix}_max_hp": entity.max_hp,
+                    f"{entity_prefix}_max_speed": entity.maxSpeed,
+                    # xp points
+                    f"{entity_prefix}_xp": entity.xp,
+                    f"{entity_prefix}_xp_next_level": entity.xp_to_next_level,
+                    # level uppable attributes
+                    f"{entity_prefix}_healing_percentage": entity.healing_percentage,
+                    f"{entity_prefix}_healing_cooldown": entity.healing_cooldown,
+                },
+                step=metrics_step,
+            )
+            # log additional metrics for ranged characters
+            if "Archer_" in class_name or "Wizard_" in class_name:
+                threads.submit(
+                    log.metrics,
+                    metric_map={
+                        f"{entity_prefix}_ranged_damage": entity.ranged_damage,
+                        f"{entity_prefix}_ranged_cooldown": entity.ranged_cooldown,
+                        f"{entity_prefix}_projectile_range": entity.projectile_range,
+                    },
+                    step=metrics_step,
+                )
+            # log additional metrics for melee characters
+            elif "Knight_" in class_name:
+                threads.submit(
+                    log.metrics,
+                    metric_map={
+                        f"{entity_prefix}_melee_damage": entity.melee_damage,
+                        f"{entity_prefix}_melee_cooldown": entity.melee_cooldown,
+                    },
+                    step=metrics_step,
+                )
+    # logs the current score
+    threads.submit(log.scores, world.scores, step=metrics_step)
+
+
 def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
     """
     Run the HAL game.
@@ -352,8 +351,9 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
     """
 
     # log game parameters
-    with log:
-        log.params(
+    with log, ThreadPoolExecutor() as threads:
+        threads.submit(
+            log.params,
             {
                 "debug": DEBUG,
                 "show_paths": SHOW_PATHS,
@@ -366,13 +366,15 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
                 "real_time": REAL_TIME,
                 "headless": HEADLESS,
                 "team_names": TEAM_NAME,
-            }
+                "logger": LOGGER,
+                "camera": CAMERA,
+            },
         )
 
         pygame.init()
         screen = pygame.display.set_mode(SCREEN_SIZE, 0, 32)
 
-        world = World(log)
+        world = World()
 
         w, h = SCREEN_SIZE
 
@@ -659,6 +661,7 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
                 pygame.display.update()
 
         clock = pygame.time.Clock()
+        frame_step = 0
         while True:
 
             for event in pygame.event.get():
@@ -679,11 +682,15 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
                     time_passed = 1000 / 30
 
                 world.process(time_passed)
+                log_metrics(world, log, frame_step, threads)
 
             world.render(screen)
             pygame.display.update()
+
             # record each game frame using camera
+            #img_data = pygame.image.tostring(surface, format="RGB")
             camera.record(screen)
+            frame_step += 1
 
             # exit game automatically in headless mode
             if world.game_end and HEADLESS:
@@ -696,14 +703,15 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
                 f"{team}: {score}" for team, score in zip(TEAM_NAME, world.scores)
             ),
         )
-        # save recording and upload with logger
-        camera.export(RECORDING_PATH)
-        log.file(RECORDING_PATH)
 
-        if "win" in world.game_result:
-            win_team, _ = world.game_result.split()
-            if win_team == TEAM_NAME[1] and RED_WIN_NONZERO_STATUS:
-                sys.exit(1)
+    # save recording and upload with logger
+    camera.export(RECORDING_PATH)
+    log.file(RECORDING_PATH)
+
+    if "win" in world.game_result:
+        win_team, _ = world.game_result.split()
+        if win_team == TEAM_NAME[1] and RED_WIN_NONZERO_STATUS:
+            sys.exit(1)
 
 
 if __name__ == "__main__":

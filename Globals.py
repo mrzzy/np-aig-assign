@@ -9,7 +9,7 @@ SHOW_SPLASH = bool(strtobool(os.environ.get("SHOW_SPLASH", default="False")))
 SPEED_MULTIPLIER = float(os.environ.get("SPEED_MULTIPLIER", default=1.0))
 
 # sets the difficulty of red team
-DIFFICULTY = str(os.environ.get("DIFFICULTY", default="easy"))
+DIFFICULTY = str(os.environ.get("DIFFICULTY", default="easy")).lower()
 if DIFFICULTY not in ["easy", "hard"]:
     raise NotImplementedError(f"Unsupported difficulty: {DIFFICULTY}")
 # Set this to 1.0 for Easy Mode
@@ -36,7 +36,7 @@ REAL_TIME = bool(strtobool(os.environ.get("REAL_TIME", default="True")))
 # - configures PyGame to use a dummy video driver that does not create a window.
 # - automatically disables the splash screen.
 # - allows the game to exit without user interaction.
-HEADLESS = bool(strtobool(os.environ.get("HEADLESS", default="True")))
+HEADLESS = bool(strtobool(os.environ.get("HEADLESS", default="False")))
 if HEADLESS:
     os.environ["SDL_VIDEODRIVER"] = "dummy"
     SHOW_SPLASH = False
