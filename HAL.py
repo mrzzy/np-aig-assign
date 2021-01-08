@@ -351,7 +351,7 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
     """
 
     # log game parameters
-    with log, ThreadPoolExecutor() as threads:
+    with log, ThreadPoolExecutor(os.cpu_count() * 4) as threads:
         threads.submit(
             log.params,
             {
@@ -704,10 +704,9 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
             ),
         )
 
-        threads.shutdown(wait=True)
         # save recording and upload with logger
         camera.export()
-        log.file(RECORDING_PATH)
+        threads.submit(log.file, RECORDING_PATH)
 
     if "win" in world.game_result:
         win_team, _ = world.game_result.split()
