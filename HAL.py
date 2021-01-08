@@ -698,9 +698,9 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
             ),
         )
 
-    # save recording and upload with logger
-    camera.export()
-    log.file(RECORDING_PATH)
+        # save recording and upload with logger
+        camera.export()
+        log.file(RECORDING_PATH)
 
     if "win" in world.game_result:
         win_team, _ = world.game_result.split()

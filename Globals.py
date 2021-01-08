@@ -57,7 +57,9 @@ os.environ["MLFLOW_TRACKING_URI"] = os.environ.get(
 MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "test")
 
 # whether to return a non zero status if Team B/Red wins
-RED_WIN_NONZERO_STATUS = bool(strtobool(os.environ.get("RED_NONZERO_STATUS", "False")))
+RED_WIN_NONZERO_STATUS = bool(
+    strtobool(os.environ.get("RED_WIN_NONZERO_STATUS", "False"))
+)
 
 # the name of the camera to use to record game frames
 # NOPCamera - does not record frames
