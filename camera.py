@@ -3,31 +3,36 @@
 # Camera
 #
 
+import cv2
+import numpy as np
 import subprocess
 from pathlib import Path
-from pygame import image
 from abc import ABC, abstractmethod
 from tempfile import mkdtemp
 from shutil import rmtree
+from Globals import SCREEN_SIZE
 
 
 class Camera:
-    """Defines an abstract camera that records frames for the game"""
+    """
+    Defines an abstract camera that records frames for the game
+    and writes the recording to the given path
+    """
+
+    def __init__(self, path):
+        self.path = path
 
     @abstractmethod
-    def record(self, surface):
+    def record(self, frame_str, step=0):
         """
-        Record a single frame from the given Pygame surface
+        Record a single frame as a binary string the recorded given time step
         """
         pass
 
     @abstractmethod
-    def export(self, path, cleanup=True):
+    def export(self):
         """
-        Export the recording as MP4 file written to the given path
-        The given path should end with the '.mp4' extension.
-        Optionally, cleanup recorded frames.
-        Cannot export after cleaning up recorded frames.
+        Export the recording as MP4 file
         """
         pass
 
@@ -35,58 +40,42 @@ class Camera:
 class NOPCamera(Camera):
     """Defines a do nothing camera."""
 
-    def record(self, surface):
+    def record(self, frame_str, step=0):
         pass
 
-    def export(self, path, cleanup=True):
+    def export(self, path):
         pass
 
 
-class FFmpegCamera(Camera):
+class OpenCVCamera(Camera):
     """
-    Defines a camera that records frames an stiches them into a video with FFmpeg.
-    Assumes that ffmpeg is installed on the system an accessible via the system path.
+    Defines a camera that records frames an stiches them into a MP4 video with OpenCV.
     """
 
-    def __init__(self):
-        super().__init__()
-        self.frame_step = 0
-        # create temporary directory to store frames
-        self.frames_dir = mkdtemp(prefix="ffmpeg_frames_")
-
-    def record(self, surface):
-        # record frame by write frame as image to frame directory
-        # this should record around
-        frame_path = Path(self.frames_dir) / f"frame_{self.frame_step}.png"
-        image.save(surface, str(frame_path))
-        self.frame_step += 1
-
-    def export(self, path, cleanup=True):
-        # resolve absolute output path to pass to ffmpe.
-        output_path = str(Path(path).resolve())
-        # convert the frames into a video with FFmpeg
-        encode_run = subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-framerate",
-                "30",
-                "-i",
-                "frame_%d.png",
-                output_path,
-            ],
-            cwd=self.frames_dir,
+    def __init__(self, path):
+        if not path.split(".")[-1].lower() == "mp4":
+            raise ValueError("Only MP4 output files are supported")
+        super().__init__(path)
+        self.video = cv2.VideoWriter(
+            path,
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            30.0,
+            SCREEN_SIZE,
         )
-        if encode_run.returncode != 0:
-            raise Exception(
-                f"FFmpeg failed to encode video from frames: \n{encode_run.stderr}"
-            )
-        # optionally clean up recorded frames
-        if cleanup:
-            rmtree(self.frames_dir)
+
+    def record(self, frame_str, step):
+        img_rgb = np.frombuffer(frame_str, dtype=np.uint8).reshape(
+            (SCREEN_SIZE[1], SCREEN_SIZE[0], 3)
+        )
+        img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+        # raise Exception
+        self.video.write(img_bgr)
+
+    def export(self):
+        self.video.release()
 
 
 cameras = {
     "NOPCamera": NOPCamera,
-    "FFmpegCamera": FFmpegCamera,
+    "OpenCVCamera": OpenCVCamera,
 }

@@ -343,7 +343,7 @@ def log_metrics(world, log, metrics_step, threads):
     threads.submit(log.scores, world.scores, step=metrics_step)
 
 
-def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
+def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
     """
     Run the HAL game.
     Uses the given logger to collect game parameters and metrics
@@ -688,8 +688,8 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
             pygame.display.update()
 
             # record each game frame using camera
-            #img_data = pygame.image.tostring(surface, format="RGB")
-            camera.record(screen)
+            img_data = pygame.image.tostring(screen, "RGB")
+            camera.record(img_data, frame_step)
             frame_step += 1
 
             # exit game automatically in headless mode
@@ -705,7 +705,7 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA]()):
         )
 
     # save recording and upload with logger
-    camera.export(RECORDING_PATH)
+    camera.export()
     log.file(RECORDING_PATH)
 
     if "win" in world.game_result:

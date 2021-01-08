@@ -11,20 +11,16 @@ BLACK_FMT:=$(PY) -m black
 .PHONY: deps format run
 
 run: dep-pip
-	$(PY) HAL.py
+	env DIFFICULTY=hard CAMERA=OpenCVCamera HEADLESS=True $(PY) HAL.py
 
 lint: dep-pip
 	$(BLACK_FMT) --check .
-	
+
 format: dep-pip
 	$(BLACK_FMT) .
 
 # dependency targets
-deps: dep-pip dep-ffmpeg
-	
-dep-pip: 
-	$(PIP) install -r requirements.txt
+deps: dep-pip
 
-dep-ffmpeg:
-	sudo apt-get update
-	sudo apt-get install -y ffmpeg
+dep-pip:
+	$(PIP) install -r requirements.txt

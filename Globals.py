@@ -52,17 +52,19 @@ os.environ["MLFLOW_TRACKING_URI"] = os.environ.get(
 )
 
 # the name of the MLFlow experiment to use when using MLFlowLogger
+# NOPCamera - does not record anything
+# OpenCVCamera - records game frames and stiches them together into a MP4 video
 MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "test")
 
 # whether to return a non zero status if Team B/Red wins
-RED_WIN_NONZERO_STATUS = bool(strtobool(os.environ.get("RED_NONZERO_STATUS", "True")))
+RED_WIN_NONZERO_STATUS = bool(strtobool(os.environ.get("RED_NONZERO_STATUS", "False")))
 
 # the name of the camera to use to record game frames
 # NOPCamera - does not record frames
 # FFmpegCameraa - records frames and stiches frames into a video using FFmpeg
 CAMERA = str(os.environ.get("CAMERA", default="NOPCamera"))
 
-# filepath to write the game recording video
+# filepath to write the game recording video. Must end with '.mp4'
 RECORDING_PATH = str(os.environ.get("RECORDING_PATH", "hal.mp4"))
 
 ## Game Settings
