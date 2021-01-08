@@ -22,8 +22,6 @@ from Base import *
 from logger import loggers
 from camera import cameras
 
-from concurrent.futures import ThreadPoolExecutor
-
 
 def import_npc(path):
     """
@@ -285,7 +283,7 @@ class Obstacle(GameEntity):
         GameEntity.process(self, time_passed)
 
 
-def log_metrics(world, log, metrics_step, log_threads):
+def log_metrics(world, log, metrics_step):
     # -- log game world metrics to logger
     for entity in world.entities.values():
         # add team prefix if the entity belongs to a team
@@ -301,8 +299,7 @@ def log_metrics(world, log, metrics_step, log_threads):
             or "Wizard_" in class_name
             or "Knight_" in class_name
         ):
-            log_threads.submit(
-                log.metrics,
+            log.metrics(
                 metric_map={
                     # TODO: log current state machine state
                     # f"{entity_prefix}_state": entity.brain.active_state.name,
@@ -320,8 +317,7 @@ def log_metrics(world, log, metrics_step, log_threads):
             )
             # log additional metrics for ranged characters
             if "Archer_" in class_name or "Wizard_" in class_name:
-                log_threads.submit(
-                    log.metrics,
+                log.metrics(
                     metric_map={
                         f"{entity_prefix}_ranged_damage": entity.ranged_damage,
                         f"{entity_prefix}_ranged_cooldown": entity.ranged_cooldown,
@@ -331,8 +327,7 @@ def log_metrics(world, log, metrics_step, log_threads):
                 )
             # log additional metrics for melee characters
             elif "Knight_" in class_name:
-                log_threads.submit(
-                    log.metrics,
+                log.metrics(
                     metric_map={
                         f"{entity_prefix}_melee_damage": entity.melee_damage,
                         f"{entity_prefix}_melee_cooldown": entity.melee_cooldown,
@@ -340,7 +335,7 @@ def log_metrics(world, log, metrics_step, log_threads):
                     step=metrics_step,
                 )
     # logs the current score
-    log_threads.submit(log.scores, world.scores, step=metrics_step)
+    log.scores(world.scores, step=metrics_step)
 
 
 def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
@@ -351,11 +346,8 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
     """
 
     # log game parameters
-    with log, ThreadPoolExecutor(os.cpu_count() * 4) as log_threads, ThreadPoolExecutor(
-        1
-    ) as cam_thread:
-        log_threads.submit(
-            log.params,
+    with log:
+        log.params(
             {
                 "debug": DEBUG,
                 "show_paths": SHOW_PATHS,
@@ -684,14 +676,14 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
                     time_passed = 1000 / 30
 
                 world.process(time_passed)
-                log_metrics(world, log, frame_step, log_threads)
+                log_metrics(world, log, frame_step)
 
             world.render(screen)
             pygame.display.update()
 
             # record each game frame using camera
             img_data = pygame.image.tostring(screen, "RGB")
-            cam_thread.submit(camera.record, img_data, frame_step)
+            camera.record(img_data, frame_step)
             frame_step += 1
 
             # exit game automatically in headless mode
@@ -707,8 +699,8 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
         )
 
         # save recording and upload with logger
-        cam_thread.submit(camera.export)
-        log_threads.submit(log.file, RECORDING_PATH)
+        camera.export()
+        log.file(RECORDING_PATH)
 
     if "win" in world.game_result:
         win_team, _ = world.game_result.split()
