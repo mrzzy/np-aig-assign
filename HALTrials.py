@@ -73,11 +73,14 @@ def print_results(scores, team_blue_wins, team_red_wins, file=sys.stdout):
         print(f"Team {TEAM_NAME[1]} wins", file=file)
     else:
         print(f"Team {TEAM_NAME[0]} & {TEAM_NAME[1]} draws", file=file)
-    print(f"A wins/B wins: {team_blue_wins}-{team_red_wins}", file=file)
+    print(
+        f"{TEAM_NAME[0]} wins-{TEAM_NAME[1]} wins: {team_blue_wins}-{team_red_wins}",
+        file=file,
+    )
 
     # print individual match resources
     print("=" * 80, file=file)
-    print("Results Report (A wins/ B wins):", file=file)
+    print(f"Results Report ({TEAM_NAME[0]} wins-{TEAM_NAME[1]} wins):", file=file)
     for n_trial, score in zip(range(1, N_TRIALS + 1), scores):
         print(f"Trial {n_trial}: {score[0]}-{score[1]}", file=file)
     print("=" * 80, file=file)
