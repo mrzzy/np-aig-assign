@@ -41,12 +41,13 @@ def run_trial(n_trial):
     Run one trial of HAL and return result and scores of teams
     """
     # run game via subprocess as pygame does not handfe concurrency well
+    run_env = {**os.environ, **RUN_ENV_OVERRIDES}
     hal_run = subprocess.run(
         [
             sys.executable,
             "HAL.py",
         ],
-        env=RUN_ENV_OVERRIDES,
+        env=run_env,
         capture_output=True,
     )
     if hal_run.returncode != 0:
@@ -92,14 +93,14 @@ if __name__ == "__main__":
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
     with mlflow.start_run(), Pool(processes=min(os.cpu_count() * 2, N_TRIALS)) as pool:
         # log trial parameters to Mlflow
-        params = dict(PARAMS)
-        params.update({k.lower(): v for k, v in RUN_ENV_OVERRIDES.items()})
-        params.update(
-            {
+        params = {
+            **PARAMS,
+            **{k.lower(): v for k, v in RUN_ENV_OVERRIDES.items()},
+            **{
                 "n_trial": N_TRIALS,
                 "red_win_nonzero_status": RED_WIN_NONZERO_STATUS,
-            }
-        )
+            },
+        }
         mlflow.log_params(params)
         # run game trial
         scores = np.asarray(
