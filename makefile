@@ -8,10 +8,13 @@ PIP:=$(PY) -m pip
 BLACK_FMT:=$(PY) -m black
 
 .DEFAULT: run
-.PHONY: deps format run
+.PHONY: deps format run run-trials
 
 run: dep-pip
-	env DIFFICULTY=hard CAMERA=OpenCVCamera HEADLESS=True $(PY) HAL.py
+	$(PY) HAL.py
+	
+run-trials: dep-pip
+	$(PY) HAL_Trials.py
 
 lint: dep-pip
 	$(BLACK_FMT) --check .
