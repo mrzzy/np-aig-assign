@@ -36,9 +36,9 @@ RUN_ENV_OVERRIDES = {
 }
 
 
-def run_trail(n_trail):
+def run_trial(n_trial):
     """
-    Run one trail of HAL and return result and scores of teams
+    Run one trial of HAL and return result and scores of teams
     """
     # run game via subprocess as pygame does not handfe concurrency well
     hal_run = subprocess.run(
@@ -85,32 +85,32 @@ def print_results(scores, team_blue_wins, team_red_wins, file=sys.stdout):
 
 
 if __name__ == "__main__":
-    # log trails to MLFlow
+    # log trial to MLFlow
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
     with mlflow.start_run(), Pool(processes=min(os.cpu_count() * 2, N_TRIALS)) as pool:
-        # log trail parameters to Mlflow
+        # log trial parameters to Mlflow
         params = dict(PARAMS)
         params.update({k.lower(): v for k, v in RUN_ENV_OVERRIDES.items()})
         params.update(
             {
-                "n_trails": N_TRIALS,
+                "n_trial": N_TRIALS,
                 "red_win_nonzero_status": RED_WIN_NONZERO_STATUS,
             }
         )
         mlflow.log_params(params)
-        # run game trails
+        # run game trial
         scores = np.asarray(
-            list(tqdm(pool.imap(run_trail, range(1, N_TRIALS + 1)), total=N_TRIALS))
+            list(tqdm(pool.imap(run_trial, range(1, N_TRIALS + 1)), total=N_TRIALS))
         )
 
-        for i_trail, score in zip(range(N_TRIALS), scores):
+        for i_trial, score in zip(range(N_TRIALS), scores):
             # log scores for each trial
             mlflow.log_metrics(
                 metrics={
                     f"team_{TEAM_NAME[0]}_score": score[0],
                     f"team_{TEAM_NAME[1]}_score": score[1],
                 },
-                step=i_trail,
+                step=i_trial,
             )
 
         # log game trial wins to MLFlow
@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
         # print results report
         print_results(scores, team_blue_wins, team_red_wins)
-        with NamedTemporaryFile("w", suffix=".txt") as f:
+        with NamedTemporaryFile("w", prefix="results_report_", suffix=".txt") as f:
             print_results(scores, team_blue_wins, team_red_wins, file=f)
             mlflow.log_artifact(f.name)
 
