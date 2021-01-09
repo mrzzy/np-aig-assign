@@ -45,13 +45,13 @@ def import_npc(path):
     return npc_class
 
 
-Knight_TeamA = import_npc(KNIGHT_RED_SRC)
-Archer_TeamA = import_npc(ARCHER_RED_SRC)
-Wizard_TeamA = import_npc(WIZARD_RED_SRC)
+Knight_TeamA = import_npc(KNIGHT_BLUE_SRC)
+Archer_TeamA = import_npc(ARCHER_BLUE_SRC)
+Wizard_TeamA = import_npc(WIZARD_BLUE_SRC)
 
-Knight_TeamB = import_npc(KNIGHT_BLUE_SRC)
-Archer_TeamB = import_npc(ARCHER_BLUE_SRC)
-Wizard_TeamB = import_npc(WIZARD_BLUE_SRC)
+Knight_TeamB = import_npc(KNIGHT_RED_SRC)
+Archer_TeamB = import_npc(ARCHER_RED_SRC)
+Wizard_TeamB = import_npc(WIZARD_RED_SRC)
 
 
 class World(object):
