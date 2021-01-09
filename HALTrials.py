@@ -17,7 +17,7 @@ from Globals import TEAM_NAME, PARAMS
 
 ## Experiment Settings
 # no. of game trials to run for the experiment
-N_TRIALS = os.environ.get("N_TRIALS", default=3)
+N_TRIALS = int(os.environ.get("N_TRIALS", default=3))
 # whether to return a non zero status if Team B/Red wins
 RED_WIN_NONZERO_STATUS = bool(
     strtobool(os.environ.get("RED_WIN_NONZERO_STATUS", "False"))
