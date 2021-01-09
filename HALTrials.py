@@ -12,6 +12,7 @@ from tqdm import tqdm
 from distutils.util import strtobool
 from multiprocessing.pool import Pool
 from tempfile import NamedTemporaryFile
+from statsmodels.stats.proportion import proportion_confint
 
 from Globals import TEAM_NAME, PARAMS
 
@@ -36,7 +37,7 @@ RUN_ENV_OVERRIDES = {
 }
 
 
-def run_trial(n_trial):
+def run_trial(n_trail):
     """
     Run one trial of HAL and return result and scores of teams
     """
@@ -62,24 +63,58 @@ def run_trial(n_trial):
     return scores
 
 
-def print_results(scores, team_blue_wins, team_red_wins, file=sys.stdout):
+def compute_statistics(scores):
+    """
+    Compute statistics from the given scores.
+    """
+    team_red_wins = np.sum(np.argmax(scores, axis=-1))
+    team_blue_wins = N_TRIALS - team_red_wins
+    # compute the proportion/ratio of wins
+    team_blue_win_ratio, team_red_win_ratio = (
+        team_blue_wins / N_TRIALS,
+        team_red_wins / N_TRIALS,
+    )
+    # compute the 95% confidence interval of win proportion/ratio
+    team_blue_95_ci = proportion_confint(
+        team_blue_wins, N_TRIALS, alpha=1 - 0.95, method="normal"
+    )
+    team_red_95_ci = proportion_confint(
+        team_red_wins, N_TRIALS, alpha=1 - 0.95, method="normal"
+    )
+
+    return {
+        "team_blue_wins": team_blue_wins,
+        "team_red_wins": team_red_wins,
+        "team_blue_win_ratio": team_blue_win_ratio,
+        "team_red_win_ratio": team_red_win_ratio,
+        "team_blue_95_ci": team_blue_95_ci,
+        "team_red_95_ci": team_red_95_ci,
+    }
+
+
+def print_results(scores, stats, file=sys.stdout):
     """
     Print out the results as a human readable report.
     """
     print("=" * 80, file=file)
     print(f"Best of {N_TRIALS} Trials:", file=file)
-    if team_blue_wins > team_red_wins:
+    if stats["team_blue_wins"] > stats["team_red_wins"]:
         print(f"Team {TEAM_NAME[0]} wins", file=file)
-    elif team_red_wins > team_blue_wins:
+    elif stats["team_red_wins"] > stats["team_blue_wins"]:
         print(f"Team {TEAM_NAME[1]} wins", file=file)
     else:
         print(f"Team {TEAM_NAME[0]} & {TEAM_NAME[1]} draws", file=file)
     print(
-        f"{TEAM_NAME[0]} wins-{TEAM_NAME[1]} wins: {team_blue_wins}-{team_red_wins}",
+        f"{TEAM_NAME[0]} wins-{TEAM_NAME[1]} wins: {stats['team_blue_wins']}-{stats['team_red_wins']}",
+        file=file,
+    )
+    # print win ratio and confidence interval
+    print(
+        f"{TEAM_NAME[0]} win ratio: {stats['team_blue_win_ratio']} 95% CI {stats['team_blue_95_ci']}",
         file=file,
     )
     print(
-        f"{TEAM_NAME[0]} win ratio-{TEAM_NAME[1]} win ratio: {team_blue_wins/N_TRIALS}-{team_red_wins/N_TRIALS}",
+        f"{TEAM_NAME[1]} win ratio: {stats['team_red_win_ratio']} 95% CI {stats['team_red_95_ci']}",
         file=file,
     )
 
@@ -122,27 +157,26 @@ if __name__ == "__main__":
             )
 
         # log game trial wins to MLFlow
-        team_red_wins = np.sum(np.argmax(scores, axis=-1))
-        team_blue_wins = N_TRIALS - team_red_wins
-        team_blue_win_ratio, team_red_win_ratio = (
-            team_blue_wins / N_TRIALS,
-            team_red_wins / N_TRIALS,
-        )
+        stats = compute_statistics(scores)
         mlflow.log_metrics(
             {
-                f"team_{TEAM_NAME[0]}_wins": team_blue_wins,
-                f"team_{TEAM_NAME[0]}_win_ratio": team_blue_win_ratio,
-                f"team_{TEAM_NAME[1]}_wins": team_red_wins,
-                f"team_{TEAM_NAME[1]}_win_ratio": team_red_win_ratio,
+                f"team_{TEAM_NAME[0]}_wins": stats["team_blue_wins"],
+                f"team_{TEAM_NAME[0]}_win_ratio": stats["team_blue_win_ratio"],
+                f"team_{TEAM_NAME[0]}_95_ci_lower": stats["team_blue_95_ci"][0],
+                f"team_{TEAM_NAME[0]}_95_ci_upper": stats["team_blue_95_ci"][1],
+                f"team_{TEAM_NAME[1]}_wins": stats["team_red_wins"],
+                f"team_{TEAM_NAME[1]}_win_ratio": stats["team_red_win_ratio"],
+                f"team_{TEAM_NAME[1]}_95_ci_lower": stats["team_red_95_ci"][0],
+                f"team_{TEAM_NAME[1]}_95_ci_upper": stats["team_red_95_ci"][1],
             },
         )
 
         # print results report
-        print_results(scores, team_blue_wins, team_red_wins)
+        print_results(scores, stats)
         with NamedTemporaryFile("w", prefix="results_report_", suffix=".txt") as f:
-            print_results(scores, team_blue_wins, team_red_wins, file=f)
+            print_results(scores, stats, file=f)
             mlflow.log_artifact(f.name)
 
     # exit nonzero if red wins if configured to do so
-    if RED_WIN_NONZERO_STATUS and team_red_wins > team_blue_wins:
+    if RED_WIN_NONZERO_STATUS and stats["team_red_wins"] > stats["team_blue_wins"]:
         sys.exit(1)
