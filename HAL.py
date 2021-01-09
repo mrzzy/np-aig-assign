@@ -27,10 +27,13 @@ def import_npc(path):
     """
     Imports the Game AI the python source at path
     """
+    # add module dir to system path to allow imports to work
+    sys.path.insert(0, os.path.dirname(path))
     # import module from source at path
     mod_spec = spec_from_file_location("module", path)
     mod = module_from_spec(mod_spec)
     mod_spec.loader.exec_module(mod)
+    sys.path.pop(0)
 
     # unpack npc class from module
     matching_names = [
