@@ -14,7 +14,7 @@ run: dep-pip
 	$(PY) HAL.py
 	
 run-trials: dep-pip
-	$(PY) HAL_Trials.py
+	$(PY) HALTrials.py
 
 lint: dep-pip
 	$(BLACK_FMT) --check .
