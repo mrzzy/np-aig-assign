@@ -45,13 +45,13 @@ def import_npc(path):
     return npc_class
 
 
-Knight_TeamA = import_npc(KNIGHT_A_SRC)
-Archer_TeamA = import_npc(ARCHER_A_SRC)
-Wizard_TeamA = import_npc(WIZARD_A_SRC)
+Knight_TeamA = import_npc(KNIGHT_RED_SRC)
+Archer_TeamA = import_npc(ARCHER_RED_SRC)
+Wizard_TeamA = import_npc(WIZARD_RED_SRC)
 
-Knight_TeamB = import_npc(KNIGHT_B_SRC)
-Archer_TeamB = import_npc(ARCHER_B_SRC)
-Wizard_TeamB = import_npc(WIZARD_B_SRC)
+Knight_TeamB = import_npc(KNIGHT_BLUE_SRC)
+Archer_TeamB = import_npc(ARCHER_BLUE_SRC)
+Wizard_TeamB = import_npc(WIZARD_BLUE_SRC)
 
 
 class World(object):
@@ -347,23 +347,7 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
 
     # log game parameters
     with log:
-        log.params(
-            {
-                "debug": DEBUG,
-                "show_paths": SHOW_PATHS,
-                "show_splash": SHOW_SPLASH,
-                "red_multiplier": RED_MULTIPLIER,
-                "red_win_nonzero_status": RED_WIN_NONZERO_STATUS,
-                "speed_multiplier": SPEED_MULTIPLIER,
-                f"team_{TEAM_NAME[0]}_sources": NPC_A_SRCS,
-                f"team_{TEAM_NAME[0]}_sources": NPC_B_SRCS,
-                "real_time": REAL_TIME,
-                "headless": HEADLESS,
-                "team_names": TEAM_NAME,
-                "logger": LOGGER,
-                "camera": CAMERA,
-            },
-        )
+        log.params(PARAMS)
 
         pygame.init()
         screen = pygame.display.set_mode(SCREEN_SIZE, 0, 32)

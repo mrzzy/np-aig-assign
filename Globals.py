@@ -17,15 +17,15 @@ if DIFFICULTY not in ["easy", "hard"]:
 RED_MULTIPLIER = 1.0 if DIFFICULTY == "easy" else 1.15
 
 # Game AI source files for game NPCs for Teams A & B
-NPC_A_SRCS = os.environ.get(
-    "NPC_A_SRCS", "Knight_TeamA.py,Archer_TeamA.py,Wizard_TeamA.py"
+NPC_BLUE_SRCS = os.environ.get(
+    "NPC_BLUE_SRCS", "Knight_TeamA.py,Archer_TeamA.py,Wizard_TeamA.py"
 ).split(",")
 
-NPC_B_SRCS = os.environ.get(
-    "NPC_B_SRCS", "Knight_TeamB.py,Archer_TeamB.py,Wizard_TeamB.py"
+NPC_RED_SRCS = os.environ.get(
+    "NPC_RED_SRCS", "Knight_TeamB.py,Archer_TeamB.py,Wizard_TeamB.py"
 ).split(",")
-KNIGHT_A_SRC, ARCHER_A_SRC, WIZARD_A_SRC = NPC_A_SRCS
-KNIGHT_B_SRC, ARCHER_B_SRC, WIZARD_B_SRC = NPC_B_SRCS
+KNIGHT_BLUE_SRC, ARCHER_BLUE_SRC, WIZARD_BLUE_SRC = NPC_BLUE_SRCS
+KNIGHT_RED_SRC, ARCHER_RED_SRC, WIZARD_RED_SRC = NPC_RED_SRCS
 
 # whether to run the game in real time.
 # if False, will skip the wait time between frames, running the game at faster pace
@@ -54,7 +54,7 @@ os.environ["MLFLOW_TRACKING_URI"] = os.environ.get(
 # the name of the MLFlow experiment to use when using MLFlowLogger
 # NOPCamera - does not record anything
 # OpenCVCamera - records game frames and stiches them together into a MP4 video
-MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "test")
+MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "np-aig-records")
 
 # whether to return a non zero status if Team B/Red wins
 RED_WIN_NONZERO_STATUS = bool(
@@ -143,3 +143,19 @@ UP_PERCENTAGE_RANGED_COOLDOWN = 10
 UP_PERCENTAGE_PROJECTILE_RANGE = 10
 UP_PERCENTAGE_HEALING = 20
 UP_PERCENTAGE_HEALING_COOLDOWN = 10
+
+PARAMS = {
+    "debug": DEBUG,
+    "show_paths": SHOW_PATHS,
+    "show_splash": SHOW_SPLASH,
+    "red_multiplier": RED_MULTIPLIER,
+    "red_win_nonzero_status": RED_WIN_NONZERO_STATUS,
+    "speed_multiplier": SPEED_MULTIPLIER,
+    f"team_{TEAM_NAME[0]}_sources": NPC_BLUE_SRCS,
+    f"team_{TEAM_NAME[1]}_sources": NPC_RED_SRCS,
+    "real_time": REAL_TIME,
+    "headless": HEADLESS,
+    "team_names": TEAM_NAME,
+    "logger": LOGGER,
+    "camera": CAMERA,
+}
