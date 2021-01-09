@@ -43,7 +43,7 @@ class NOPCamera(Camera):
     def record(self, frame_str, step=0):
         pass
 
-    def export(self, path):
+    def export(self):
         pass
 
 
