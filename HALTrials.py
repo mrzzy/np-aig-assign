@@ -78,6 +78,10 @@ def print_results(scores, team_blue_wins, team_red_wins, file=sys.stdout):
         f"{TEAM_NAME[0]} wins-{TEAM_NAME[1]} wins: {team_blue_wins}-{team_red_wins}",
         file=file,
     )
+    print(
+        f"{TEAM_NAME[0]} win ratio-{TEAM_NAME[1]} win ratio: {team_blue_wins/N_TRIALS}-{team_red_wins/N_TRIALS}",
+        file=file,
+    )
 
     # print individual match resources
     print("=" * 80, file=file)
