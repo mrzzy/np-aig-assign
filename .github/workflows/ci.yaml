@@ -37,7 +37,7 @@ jobs:
       DIFFICULTY: "easy"
       TEAM_NAME: "You,EasyAI"
       LOGGER: "MLFlowLogger"
-      CAMERA: "FFmpegCamera"
+      CAMERA: "OpenCVCamera"
       MLFLOW_EXPERIMENT: "np-aig-records"
     steps:
       - uses: actions/checkout@v2
@@ -58,7 +58,7 @@ jobs:
       DIFFICULTY: "hard"
       TEAM_NAME: "You,HardAI"
       LOGGER: "MLFlowLogger"
-      CAMERA: "FFmpegCamera"
+      CAMERA: "OpenCVCamera"
       MLFLOW_EXPERIMENT: "np-aig-records"
     steps:
       - uses: actions/checkout@v2
@@ -91,7 +91,7 @@ jobs:
           make deps
       - name: "Playtest against EasyAI"
         run: |
-          make run
+          make run-trials
 
   trials-playtest-hard:
     runs-on: ubuntu-20.04
@@ -112,5 +112,5 @@ jobs:
           make deps
       - name: "Playtest against HardAI"
         run: |
-          make run
+          make run-trials
 
