@@ -30,6 +30,8 @@ jobs:
         run: |
           make lint
     
+  # Recorded Playtests run one game of HAL with metrics collection and video camera,
+  # metrics & recording are uploaded to the AIG MLFlow server in the `np-aig-records' experiment.
   recorded-playtest-easy:
     runs-on: ubuntu-20.04
     name: "Recorded Playtest vs Easy AI"
@@ -69,6 +71,30 @@ jobs:
         run: |
           make deps
       - name: "Playtest against HardAI"
+        run: |
+          make run
+
+  recorded-playtest-master:
+    runs-on: ubuntu-20.04
+    name: "Recorded Playtest vs Master"
+    env:
+      TEAM_NAME: "You,Master"
+      LOGGER: "MLFlowLogger"
+      CAMERA: "OpenCVCamera"
+      MLFLOW_EXPERIMENT: "np-aig-records"
+      NPC_BLUE_SRCS: "master/Knight_TeamA.py,master/Archer_TeamA.py,master/Wizard_TeamA.py"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          path: "master"
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: "Install dependencies"
+        run: |
+          make deps
+      - name: "Playtest against Master"
         run: |
           make run
 
