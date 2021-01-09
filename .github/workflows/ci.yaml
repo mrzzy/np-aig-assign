@@ -30,7 +30,7 @@ jobs:
         run: |
           make lint
     
-  # Recorded Playtests run one game of HAL with metrics collection and video camera,
+  # Recorded Playtests runs one game of HAL with metrics collection and video camera,
   # metrics & recording are uploaded to the AIG MLFlow server in the `np-aig-records' experiment.
   recorded-playtest-easy:
     runs-on: ubuntu-20.04
@@ -87,6 +87,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/checkout@v2
         with:
+          ref: "master"
           path: "master"
       - uses: actions/setup-python@v2
         with:
@@ -98,6 +99,9 @@ jobs:
         run: |
           make run
 
+  # Multi Trial Playtest runs multiple games of HAL with basic metrics collection
+  # aggregates the results of multiple matches to given more accurate verdict on 
+  # which AI is better.
   trials-playtest-easy:
     runs-on: ubuntu-20.04
     name: "Multiple Trial Playtest vs Easy AI"
@@ -153,6 +157,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/checkout@v2
         with:
+          ref: "master"
           path: "master"
       - uses: actions/setup-python@v2
         with:
