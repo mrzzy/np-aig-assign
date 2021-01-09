@@ -139,6 +139,6 @@ if __name__ == "__main__":
             print_results(scores, team_blue_wins, team_red_wins, file=f)
             mlflow.log_artifact(f.name)
 
-        # exit nonzero if red wins if configured to do so
-        if RED_WIN_NONZERO_STATUS and team_red_wins > team_blue_wins:
-            sys.exit(1)
+    # exit nonzero if red wins if configured to do so
+    if RED_WIN_NONZERO_STATUS and team_red_wins > team_blue_wins:
+        sys.exit(1)
