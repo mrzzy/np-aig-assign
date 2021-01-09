@@ -140,3 +140,27 @@ jobs:
         run: |
           make run-trials
 
+  trials-playtest-master:
+    runs-on: ubuntu-20.04
+    name: "Multiple Trial Playtest vs Master"
+    env:
+      TEAM_NAME: "You,Master"
+      MLFLOW_EXPERIMENT: "np-aig-trials"
+      RED_WIN_NONZERO_STATUS: "True"
+      NPC_BLUE_SRCS: "master/Knight_TeamA.py,master/Archer_TeamA.py,master/Wizard_TeamA.py"
+      N_TRIALS: 31
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          path: "master"
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: "Install dependencies"
+        run: |
+          make deps
+      - name: "Playtest against Master"
+        run: |
+          make run-trials
+
