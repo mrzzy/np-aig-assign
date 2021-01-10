@@ -123,12 +123,17 @@ def print_results(scores, stats, file=sys.stdout):
     )
     # print out which team is better at 95% confidence
     if stats["better_team_95"] == "blue":
-        print(f"Team {TEAM_NAME[0]} is significantly better @ 95% confidence")
+        print(
+            f"Team {TEAM_NAME[0]} is significantly better @ 95% confidence", file=file
+        )
     elif stats["better_team_95"] == "red":
-        print(f"Team {TEAM_NAME[1]} is significantly better @ 95% confidence")
+        print(
+            f"Team {TEAM_NAME[1]} is significantly better @ 95% confidence", file=file
+        )
     else:
         print(
-            f"Nether team {TEAM_NAME[0]} & {TEAM_NAME[1]} is significantly better @ 95% confidence"
+            f"Neither team {TEAM_NAME[0]} & {TEAM_NAME[1]} is significantly better @ 95% confidence",
+            file=file,
         )
 
     # print win ratio and confidence it is better
