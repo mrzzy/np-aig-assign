@@ -33,7 +33,7 @@ RUN_ENV_OVERRIDES = {
     "HEADLESS": "True",
     "LOGGER": "NOPLogger",
     "CAMERA": "NOPCamera",
-    "RED_SIG_BETTER_NONZERO_STATUS": "False",
+    "RED_WIN_NONZERO_STATUS": "False",
 }
 
 
