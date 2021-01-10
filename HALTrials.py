@@ -20,7 +20,7 @@ from Globals import TEAM_NAME, PARAMS
 # no. of game trials to run for the experiment
 N_TRIALS = int(os.environ.get("N_TRIALS", default=3))
 # confidence to use when determining which team is significantly better
-CONFIDENCE = float(os.environ.get("CONFIDENCE", 0.95))
+CONFIDENCE = float(os.environ.get("CONFIDENCE", 0.99))
 # whether to return a non zero status if Team B/Red is significantly better
 # at CONFIDENCE confidence
 RED_SIG_BETTER_NONZERO_STATUS = bool(
