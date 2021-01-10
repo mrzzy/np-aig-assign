@@ -76,10 +76,10 @@ def compute_statistics(scores):
     )
     # compute the 95% confidence interval of win proportion/ratio
     team_blue_95_ci = proportion_confint(
-        team_blue_wins, N_TRIALS, alpha=1 - 0.95, method="binom_test"
+        team_blue_wins, N_TRIALS, alpha=1 - 0.95, method="normal"
     )
     team_red_95_ci = proportion_confint(
-        team_red_wins, N_TRIALS, alpha=1 - 0.95, method="binom_test"
+        team_red_wins, N_TRIALS, alpha=1 - 0.95, method="normal"
     )
 
     # perform hypothesis testing to determine which team is significantly better with 95% confidence
