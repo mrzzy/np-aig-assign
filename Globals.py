@@ -158,4 +158,6 @@ PARAMS = {
     "team_names": TEAM_NAME,
     "logger": LOGGER,
     "camera": CAMERA,
+    # assume team red is opponent
+    "opponent": TEAM_NAME[-1],
 }
