@@ -76,10 +76,10 @@ def compute_statistics(scores):
     )
     # compute the 95% confidence interval of win proportion/ratio
     team_blue_95_ci = proportion_confint(
-        team_blue_wins, N_TRIALS, alpha=1 - 0.95, method="normal"
+        team_blue_wins, N_TRIALS, alpha=1 - 0.95, method="binom_test"
     )
     team_red_95_ci = proportion_confint(
-        team_red_wins, N_TRIALS, alpha=1 - 0.95, method="normal"
+        team_red_wins, N_TRIALS, alpha=1 - 0.95, method="binom_test"
     )
 
     # perform hypothesis testing to determine which team is significantly better with 95% confidence
@@ -165,7 +165,7 @@ if __name__ == "__main__":
             **{k.lower(): v for k, v in RUN_ENV_OVERRIDES.items()},
             **{
                 "n_trial": N_TRIALS,
-                "RED_SIG_BETTER_NONZERO_STATUS": RED_SIG_BETTER_NONZERO_STATUS,
+                "red_sig_better_nonzero_status": RED_SIG_BETTER_NONZERO_STATUS,
             },
         }
         mlflow.log_params(params)
