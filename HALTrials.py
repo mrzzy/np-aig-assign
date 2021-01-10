@@ -164,7 +164,7 @@ def print_results(scores, stats, file=sys.stdout):
 if __name__ == "__main__":
     # log trial to MLFlow
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
-    with mlflow.start_run(), Pool(processes=min(os.cpu_count() * 2, N_TRIALS)) as pool:
+    with mlflow.start_run(), Pool(processes=min(os.cpu_count(), N_TRIALS)) as pool:
         # log trial parameters to Mlflow
         params = {
             **PARAMS,
