@@ -13,16 +13,15 @@ from distutils.util import strtobool
 from multiprocessing.pool import Pool
 from tempfile import NamedTemporaryFile
 from statsmodels.stats.proportion import proportion_confint
-from scipy.stats import binom_test
 
 from Globals import TEAM_NAME, PARAMS
 
 ## Experiment Settings
 # no. of game trials to run for the experiment
 N_TRIALS = int(os.environ.get("N_TRIALS", default=3))
-# whether to return a non zero status if Team B/Red wins
-RED_WIN_NONZERO_STATUS = bool(
-    strtobool(os.environ.get("RED_WIN_NONZERO_STATUS", "False"))
+# whether to return a non zero status if Team B/Red is significantly better at 95% confidence
+RED_SIG_BETTER_NONZERO_STATUS = bool(
+    strtobool(os.environ.get("RED_SIG_BETTER_NONZERO_STATUS", "False"))
 )
 
 # the name of the MLFlow experiment to log trial results to
@@ -34,7 +33,7 @@ RUN_ENV_OVERRIDES = {
     "HEADLESS": "True",
     "LOGGER": "NOPLogger",
     "CAMERA": "NOPCamera",
-    "RED_WIN_NONZERO_STATUS": "False",
+    "RED_SIG_BETTER_NONZERO_STATUS": "False",
 }
 
 
@@ -95,14 +94,6 @@ def compute_statistics(scores):
     else:
         better_team_95 = "draw"
 
-    # compute probability that either team is significantly better using binomial test
-    team_blue_better_confidence = 1 - binom_test(
-        team_red_wins, N_TRIALS, p=team_blue_win_ratio, alternative="greater"
-    )
-    team_red_better_confidence = 1 - binom_test(
-        team_blue_wins, N_TRIALS, p=team_red_win_ratio, alternative="greater"
-    )
-
     return {
         "team_blue_wins": team_blue_wins,
         "team_red_wins": team_red_wins,
@@ -111,8 +102,6 @@ def compute_statistics(scores):
         "team_blue_95_ci": team_blue_95_ci,
         "team_red_95_ci": team_red_95_ci,
         "better_team_95": better_team_95,
-        "team_blue_better_confidence": team_blue_better_confidence,
-        "team_red_better_confidence": team_red_better_confidence,
     }
 
 
@@ -144,13 +133,11 @@ def print_results(scores, stats, file=sys.stdout):
 
     # print win ratio and confidence it is better
     print(
-        f"{TEAM_NAME[0]} win ratio: {stats['team_blue_win_ratio']} "
-        f"better confidence: {stats['team_blue_better_confidence']}",
+        f"{TEAM_NAME[0]} win ratio: {stats['team_blue_win_ratio']} 95% CI {stats['team_blue_95_ci']}",
         file=file,
     )
     print(
-        f"{TEAM_NAME[1]} win ratio: {stats['team_red_win_ratio']} "
-        f"better confidence: {stats['team_red_better_confidence']}",
+        f"{TEAM_NAME[1]} win ratio: {stats['team_red_win_ratio']} 95% CI {stats['team_red_95_ci']}",
         file=file,
     )
 
@@ -173,7 +160,7 @@ if __name__ == "__main__":
             **{k.lower(): v for k, v in RUN_ENV_OVERRIDES.items()},
             **{
                 "n_trial": N_TRIALS,
-                "red_win_nonzero_status": RED_WIN_NONZERO_STATUS,
+                "RED_SIG_BETTER_NONZERO_STATUS": RED_SIG_BETTER_NONZERO_STATUS,
             },
         }
         mlflow.log_params(params)
@@ -200,9 +187,6 @@ if __name__ == "__main__":
                 f"team_{TEAM_NAME[0]}_win_ratio": stats["team_blue_win_ratio"],
                 f"team_{TEAM_NAME[0]}_ci_lower_95": stats["team_blue_95_ci"][0],
                 f"team_{TEAM_NAME[0]}_ci_upper_95": stats["team_blue_95_ci"][1],
-                f"team_{TEAM_NAME[0]}_better_team_confidence": stats[
-                    "team_blue_better_confidence"
-                ],
                 f"team_{TEAM_NAME[0]}_better_team_95": (
                     1 if stats["better_team_95"] == "blue" else 0
                 ),
@@ -210,9 +194,6 @@ if __name__ == "__main__":
                 f"team_{TEAM_NAME[1]}_win_ratio": stats["team_red_win_ratio"],
                 f"team_{TEAM_NAME[1]}_95_ci_lower": stats["team_red_95_ci"][0],
                 f"team_{TEAM_NAME[1]}_95_ci_upper": stats["team_red_95_ci"][1],
-                f"team_{TEAM_NAME[1]}_better_team_confidence": stats[
-                    "team_red_better_confidence"
-                ],
                 f"team_{TEAM_NAME[1]}_better_team_95": (
                     1 if stats["better_team_95"] == "red" else 0
                 ),
@@ -225,6 +206,6 @@ if __name__ == "__main__":
             print_results(scores, stats, file=f)
             mlflow.log_artifact(f.name)
 
-    # exit nonzero if red wins if configured to do so
-    if RED_WIN_NONZERO_STATUS and stats["team_red_wins"] > stats["team_blue_wins"]:
+    # exit nonzero status if red team is significantly better 95% confidence and configured to do so
+    if RED_SIG_BETTER_NONZERO_STATUS and stats["better_team_95"] == "red":
         sys.exit(1)
