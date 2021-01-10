@@ -151,7 +151,7 @@ jobs:
       TEAM_NAME: "You,Master"
       MLFLOW_EXPERIMENT: "np-aig-trials"
       RED_SIG_BETTER_NONZERO_STATUS: "True"
-      NPC_BLUE_SRCS: "master/Knight_TeamA.py,master/Archer_TeamA.py,master/Wizard_TeamA.py"
+      NPC_RED_SRCS: "master/Knight_TeamA.py,master/Archer_TeamA.py,master/Wizard_TeamA.py"
       N_TRIALS: 31
     steps:
       - uses: actions/checkout@v2
