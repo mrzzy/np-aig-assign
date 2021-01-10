@@ -13,6 +13,7 @@ from distutils.util import strtobool
 from multiprocessing.pool import Pool
 from tempfile import NamedTemporaryFile
 from statsmodels.stats.proportion import proportion_confint
+from scipy.stats import binom_test
 
 from Globals import TEAM_NAME, PARAMS
 
@@ -82,6 +83,26 @@ def compute_statistics(scores):
         team_red_wins, N_TRIALS, alpha=1 - 0.95, method="normal"
     )
 
+    # perform hypothesis testing to determine which team is significantly better with 95% confidence
+    # null hypothesis: team blue's NPCs is not significantly better/worse than team red's NPCs
+    # alternative hypothesis: team blue's NPCs is significantly better/worse than team red's NPCs
+    red_95_ci_lower, red_95_ci_upper = team_red_95_ci
+    blue_95_ci_lower, blue_95_ci_upper = team_blue_95_ci
+    if team_blue_win_ratio >= red_95_ci_upper:
+        better_team_95 = "blue"
+    elif team_red_win_ratio >= blue_95_ci_upper:
+        better_team_95 = "red"
+    else:
+        better_team_95 = "draw"
+
+    # compute probability that either team is significantly better using binomial test
+    team_blue_better_confidence = 1 - binom_test(
+        team_red_wins, N_TRIALS, p=team_blue_win_ratio, alternative="greater"
+    )
+    team_red_better_confidence = 1 - binom_test(
+        team_blue_wins, N_TRIALS, p=team_red_win_ratio, alternative="greater"
+    )
+
     return {
         "team_blue_wins": team_blue_wins,
         "team_red_wins": team_red_wins,
@@ -89,6 +110,9 @@ def compute_statistics(scores):
         "team_red_win_ratio": team_red_win_ratio,
         "team_blue_95_ci": team_blue_95_ci,
         "team_red_95_ci": team_red_95_ci,
+        "better_team_95": better_team_95,
+        "team_blue_better_confidence": team_blue_better_confidence,
+        "team_red_better_confidence": team_red_better_confidence,
     }
 
 
@@ -108,13 +132,25 @@ def print_results(scores, stats, file=sys.stdout):
         f"{TEAM_NAME[0]} wins-{TEAM_NAME[1]} wins: {stats['team_blue_wins']}-{stats['team_red_wins']}",
         file=file,
     )
-    # print win ratio and confidence interval
+    # print out which team is better at 95% confidence
+    if stats["better_team_95"] == "blue":
+        print(f"Team {TEAM_NAME[0]} is significantly better @ 95% confidence")
+    elif stats["better_team_95"] == "red":
+        print(f"Team {TEAM_NAME[1]} is significantly better @ 95% confidence")
+    else:
+        print(
+            f"Nether team {TEAM_NAME[0]} & {TEAM_NAME[1]} is significantly better @ 95% confidence"
+        )
+
+    # print win ratio and confidence it is better
     print(
-        f"{TEAM_NAME[0]} win ratio: {stats['team_blue_win_ratio']} 95% CI {stats['team_blue_95_ci']}",
+        f"{TEAM_NAME[0]} win ratio: {stats['team_blue_win_ratio']} "
+        f"better confidence: {stats['team_blue_better_confidence']}",
         file=file,
     )
     print(
-        f"{TEAM_NAME[1]} win ratio: {stats['team_red_win_ratio']} 95% CI {stats['team_red_95_ci']}",
+        f"{TEAM_NAME[1]} win ratio: {stats['team_red_win_ratio']} "
+        f"better confidence: {stats['team_red_better_confidence']}",
         file=file,
     )
 
@@ -162,12 +198,24 @@ if __name__ == "__main__":
             {
                 f"team_{TEAM_NAME[0]}_wins": stats["team_blue_wins"],
                 f"team_{TEAM_NAME[0]}_win_ratio": stats["team_blue_win_ratio"],
-                f"team_{TEAM_NAME[0]}_95_ci_lower": stats["team_blue_95_ci"][0],
-                f"team_{TEAM_NAME[0]}_95_ci_upper": stats["team_blue_95_ci"][1],
+                f"team_{TEAM_NAME[0]}_ci_lower_95": stats["team_blue_95_ci"][0],
+                f"team_{TEAM_NAME[0]}_ci_upper_95": stats["team_blue_95_ci"][1],
+                f"team_{TEAM_NAME[0]}_better_team_confidence": stats[
+                    "team_blue_better_confidence"
+                ],
+                f"team_{TEAM_NAME[0]}_better_team_95": (
+                    1 if stats["better_team_95"] == "blue" else 0
+                ),
                 f"team_{TEAM_NAME[1]}_wins": stats["team_red_wins"],
                 f"team_{TEAM_NAME[1]}_win_ratio": stats["team_red_win_ratio"],
                 f"team_{TEAM_NAME[1]}_95_ci_lower": stats["team_red_95_ci"][0],
                 f"team_{TEAM_NAME[1]}_95_ci_upper": stats["team_red_95_ci"][1],
+                f"team_{TEAM_NAME[1]}_better_team_confidence": stats[
+                    "team_red_better_confidence"
+                ],
+                f"team_{TEAM_NAME[1]}_better_team_95": (
+                    1 if stats["better_team_95"] == "red" else 0
+                ),
             },
         )
 
