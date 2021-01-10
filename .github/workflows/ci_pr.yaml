@@ -1,14 +1,15 @@
 #
 # HAL
 # continuous integration (ci) pipeline
+# for pull requests
 #
 
 # see Globals.py for documentation on environment variable settings
 
-name: "CI Pipeline (Master)"
-on: 
-  push:
-    branches: [ master ]
+name: "CI Pipeline (Pull Request)"
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize]
 env:
   REAL_TIME: "False"
   HEADLESS: "True"
@@ -18,6 +19,7 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 jobs:
   lint:
+    if: ${{ github.event.label.name == "ok-to-test" }}
     runs-on: ubuntu-20.04
     name: "Lint HAL source code"
     steps:
@@ -31,87 +33,56 @@ jobs:
       - name: "Lint bentobox-sdk"
         run: |
           make lint
-    
-  recorded-playtest-easy:
+
+  recorded-playtest-master:
+    if: ${{ github.event.label.name == "ok-to-test" }}
     runs-on: ubuntu-20.04
-    name: "Recorded Playtest vs Easy AI"
+    name: "Recorded Playtest vs Master"
     env:
-      DIFFICULTY: "easy"
-      TEAM_NAME: "MasteMaster,EasyAI"
+      TEAM_NAME: "You,Master"
       LOGGER: "MLFlowLogger"
       CAMERA: "OpenCVCamera"
       MLFLOW_EXPERIMENT: "np-aig-records"
+      NPC_BLUE_SRCS: "master/Knight_TeamA.py,master/Archer_TeamA.py,master/Wizard_TeamA.py"
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          ref: "master"
+          path: "master"
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
       - name: "Install dependencies"
         run: |
           make deps
-      - name: "Playtest against EasyAI"
+      - name: "Playtest against Master"
         run: |
           make run
 
-  recorded-playtest-hard:
+  trials-playtest-master:
+    if: ${{ github.event.label.name == "ok-to-test" }}
     runs-on: ubuntu-20.04
-    name: "Recorded Playtest vs Hard AI"
+    name: "Multiple Trial Playtest vs Master"
     env:
-      DIFFICULTY: "hard"
-      TEAM_NAME: "Master,HardAI"
-      LOGGER: "MLFlowLogger"
-      CAMERA: "OpenCVCamera"
-      MLFLOW_EXPERIMENT: "np-aig-records"
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
-      - name: "Install dependencies"
-        run: |
-          make deps
-      - name: "Playtest against HardAI"
-        run: |
-          make run
-
-  trials-playtest-easy:
-    runs-on: ubuntu-20.04
-    name: "Multiple Trial Playtest vs Easy AI"
-    env:
-      DIFFICULTY: "easy"
-      TEAM_NAME: "Master,EasyAI"
+      TEAM_NAME: "You,Master"
       MLFLOW_EXPERIMENT: "np-aig-trials"
       RED_SIG_BETTER_NONZERO_STATUS: "True"
+      NPC_RED_SRCS: "master/Knight_TeamA.py,master/Archer_TeamA.py,master/Wizard_TeamA.py"
       N_TRIALS: 41
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          ref: "master"
+          path: "master"
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
       - name: "Install dependencies"
         run: |
           make deps
-      - name: "Playtest against EasyAI"
+      - name: "Playtest against Master"
         run: |
           make run-trials
 
-  trials-playtest-hard:
-    runs-on: ubuntu-20.04
-    name: "Multiple Trial Playtest vs Hard AI"
-    env:
-      DIFFICULTY: "hard"
-      TEAM_NAME: "Master,HardAI"
-      MLFLOW_EXPERIMENT: "np-aig-trials"
-      RED_SIG_BETTER_NONZERO_STATUS: "True"
-      N_TRIALS: 41
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
-      - name: "Install dependencies"
-        run: |
-          make deps
-      - name: "Playtest against HardAI"
-        run: |
-          make run-trials
