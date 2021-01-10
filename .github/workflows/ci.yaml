@@ -110,7 +110,7 @@ jobs:
       TEAM_NAME: "You,EasyAI"
       MLFLOW_EXPERIMENT: "np-aig-trials"
       RED_SIG_BETTER_NONZERO_STATUS: "True"
-      N_TRIALS: 31
+      N_TRIALS: 41
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -131,7 +131,7 @@ jobs:
       TEAM_NAME: "You,HardAI"
       MLFLOW_EXPERIMENT: "np-aig-trials"
       RED_SIG_BETTER_NONZERO_STATUS: "True"
-      N_TRIALS: 31
+      N_TRIALS: 41
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -152,7 +152,7 @@ jobs:
       MLFLOW_EXPERIMENT: "np-aig-trials"
       RED_SIG_BETTER_NONZERO_STATUS: "True"
       NPC_RED_SRCS: "master/Knight_TeamA.py,master/Archer_TeamA.py,master/Wizard_TeamA.py"
-      N_TRIALS: 31
+      N_TRIALS: 41
     steps:
       - uses: actions/checkout@v2
       - uses: actions/checkout@v2
