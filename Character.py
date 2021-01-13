@@ -107,7 +107,7 @@ class Character(GameEntity):
         if self.current_healing_cooldown <= 0:
 
             # colliding with target
-            if pygame.sprite.collide_rect(self, self.target):
+            if pygame.sprite.collide_rect(self, target):
                 if self.current_melee_cooldown <= 0:
                     self.target.current_hp -= self.melee_damage
                     self.current_melee_cooldown = self.melee_cooldown

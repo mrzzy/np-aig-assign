@@ -1,0 +1,117 @@
+#
+# HAL
+# continuous integration (ci) pipeline
+#
+
+# see Globals.py for documentation on environment variable settings
+
+name: "CI Pipeline (Master)"
+on: 
+  push:
+    branches: [ master ]
+env:
+  REAL_TIME: "False"
+  HEADLESS: "True"
+  MLFLOW_TRACKING_URI: "http://aigmlflow.mrzzy.co"
+  AWS_DEFAULT_REGION: "ap-southeast-1"
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+jobs:
+  lint:
+    runs-on: ubuntu-20.04
+    name: "Lint HAL source code"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: "Install dependencies"
+        run: |
+          make deps
+      - name: "Lint bentobox-sdk"
+        run: |
+          make lint
+    
+  recorded-playtest-easy:
+    runs-on: ubuntu-20.04
+    name: "Recorded Playtest vs Easy AI"
+    env:
+      DIFFICULTY: "easy"
+      TEAM_NAME: "MasteMaster,EasyAI"
+      LOGGER: "MLFlowLogger"
+      CAMERA: "OpenCVCamera"
+      MLFLOW_EXPERIMENT: "np-aig-records"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: "Install dependencies"
+        run: |
+          make deps
+      - name: "Playtest against EasyAI"
+        run: |
+          make run
+
+  recorded-playtest-hard:
+    runs-on: ubuntu-20.04
+    name: "Recorded Playtest vs Hard AI"
+    env:
+      DIFFICULTY: "hard"
+      TEAM_NAME: "Master,HardAI"
+      LOGGER: "MLFlowLogger"
+      CAMERA: "OpenCVCamera"
+      MLFLOW_EXPERIMENT: "np-aig-records"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: "Install dependencies"
+        run: |
+          make deps
+      - name: "Playtest against HardAI"
+        run: |
+          make run
+
+  trials-playtest-easy:
+    runs-on: ubuntu-20.04
+    name: "Multiple Trial Playtest vs Easy AI"
+    env:
+      DIFFICULTY: "easy"
+      TEAM_NAME: "Master,EasyAI"
+      MLFLOW_EXPERIMENT: "np-aig-trials"
+      RED_SIG_BETTER_NONZERO_STATUS: "True"
+      N_TRIALS: 41
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: "Install dependencies"
+        run: |
+          make deps
+      - name: "Playtest against EasyAI"
+        run: |
+          make run-trials
+
+  trials-playtest-hard:
+    runs-on: ubuntu-20.04
+    name: "Multiple Trial Playtest vs Hard AI"
+    env:
+      DIFFICULTY: "hard"
+      TEAM_NAME: "Master,HardAI"
+      MLFLOW_EXPERIMENT: "np-aig-trials"
+      RED_SIG_BETTER_NONZERO_STATUS: "True"
+      N_TRIALS: 41
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: "Install dependencies"
+        run: |
+          make deps
+      - name: "Playtest against HardAI"
+        run: |
+          make run-trials
