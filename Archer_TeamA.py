@@ -1,11 +1,10 @@
 import pygame
 
-from random import randint, random
+from random import randint, random, choices as random_choices
 from Graph import *
 
 from Character import *
 from State import *
-
 
 class Archer_TeamA(Character):
     def __init__(self, world, image, projectile_image, base, position):
@@ -42,16 +41,18 @@ class Archer_TeamA(Character):
 
         Character.process(self, time_passed)
 
-        level_up_stats = [
-            "hp",
-            "speed",
-            "ranged damage",
-            "ranged cooldown",
-            "projectile range",
+        level_up_stats_weighted = [
+            ("ranged cooldown", 0.5),
+            ("projectile range", 0.2),
+            ("healing cooldown", 0.3),
         ]
         if self.can_level_up():
-            choice = randint(0, len(level_up_stats) - 1)
-            self.level_up(level_up_stats[choice])
+            upgrade_stat = random_choices(
+                population=[s[0] for s in level_up_stats_weighted],
+                weights=[s[1] for s in level_up_stats_weighted],
+                k=1,
+            )[0]
+            self.level_up(upgrade_stat)
 
 
 class ArcherStateSeeking_TeamA(State):
