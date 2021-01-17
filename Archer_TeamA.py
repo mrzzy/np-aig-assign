@@ -1,5 +1,5 @@
 import pygame
-from pygame import Vector2
+from pygame import Vector2, Surface
 from random import randint, random, choices as random_choices
 from Graph import *
 
@@ -45,6 +45,7 @@ def detect_collisions(entity):
         if collide_rel is None:
             # no collision: skip
             continue
+
         # compute collision point offset by entity rect top left pt.
         collide_pt = Vector2(entity.rect.left, entity.rect.top) + Vector2(collide_rel)
         # record collision
@@ -75,6 +76,38 @@ def avoid_obstacle(entity):
         normal_heading = normal.normalize()
         move_target = collide_pt + (normal_heading * entity.maxSpeed)
         seek(entity, move_target)
+
+
+def line_of_slight(entity, target, step_dist=20, ray_size=(4, 4)):
+    """
+    Whether entity has line of sight on the given target
+    By shooting a virtual "ray of light" toward the target and checking for collisions
+    along the way at after traveling for each step_dist.
+    """
+    # shoot a virtual "ray" towards the target
+    world = entity.world
+    ray = GameEntity(entity.world, "ray", Surface(ray_size))
+    # ray of light's collision mask should be filled.
+    ray.mask.fill()
+    ray.position = entity.position
+
+    while (target.position - ray.position).length() > 0:
+        # move step_dist step towards the target
+        disp = target.position - ray.position
+        heading = disp.normalize()
+        ray.position = ray.position + heading * min(step_dist, disp.length())
+        # call process() manually is not actually added to the game world
+        ray.process(time_passed=0)
+
+        # check for collisions along the way
+        collisions = detect_collisions(ray)
+        if len(collisions) > 0:
+            collided, collide_pt = collisions[0]
+            # check that we are not colliding with our target
+            if collided.id != target.id:
+                # no line of slight: ray collided
+                return False
+    return True
 
 
 class Archer_TeamA(Character):
@@ -125,6 +158,7 @@ class Archer_TeamA(Character):
 
 
 class ArcherStateSeeking_TeamA(State):
+    # TODO (mrzzy): Push together with knight/use as damage sponge
     def __init__(self, archer):
 
         State.__init__(self, "seeking")
@@ -211,6 +245,7 @@ class ArcherStateCombat_TeamA(State):
             self.archer.velocity = Vector2(0, 0)
             if self.archer.current_ranged_cooldown <= 0:
                 attack_pos = target.position
+                # TODO(mrzzy) (shoot at moving target)
                 self.archer.ranged_attack(attack_pos)
 
         # movement: stay only close enough to attack
@@ -232,11 +267,15 @@ class ArcherStateCombat_TeamA(State):
         avoid_obstacle(self.archer)
 
     def check_conditions(self):
-
-        # target is gone
+        # target is gone/lost line of sight
         if (
             self.archer.world.get(self.archer.target.id) is None
             or self.archer.target.ko
+            or not line_of_slight(
+                self.archer,
+                self.archer.target,
+                ray_size=self.archer.projectile_image.get_size(),
+            )
         ):
             self.archer.target = None
             return "seeking"
