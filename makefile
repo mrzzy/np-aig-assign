@@ -11,7 +11,7 @@ BLACK_FMT:=$(PY) -m black
 .PHONY: deps format run run-trials
 
 run: dep-pip
-	env REAL_TIME=False $(PY) HAL.py
+	$(PY) HAL.py
 	
 run-trials: dep-pip
 	$(PY) HALTrials.py
