@@ -53,29 +53,34 @@ def detect_collisions(entity):
     return collisions
 
 
-def seek(entity, move_pos):
+def seek(entity, move_pos, offset=4):
     """
     Move towards move_pos at max speed
+    Stops moving when within offset radius to prevent bouncing around point
+    Returns True if it reaches move_pos (with offset) else False.
     """
-    entity.velocity = move_pos - entity.position
-    if entity.velocity.length() > 0:
-        entity.velocity.normalize_ip()
-        entity.velocity *= entity.maxSpeed
+    disp = move_pos - entity.position
+    if disp.length() < offset:
+        return True
+    entity.velocity = entity.maxSpeed * disp.normalize()
+    return False
 
 
-def avoid_obstacle(entity):
+def avoid_obstacle(entity, collisions, correct_dist=20):
     """
     When colliding with the obstacle, direct entity to move in the opposite direction
-    of the collision to avoid the obstacle.
+    of the collision for correct_dist to avoid the obstacle.
+    Returns position the entity should move to exit collision.
     """
-    collisions = detect_collisions(entity)
-    if len(collisions) >= 1:
-        collided, collide_pt = collisions[0]
-        normal = entity.position - collide_pt
-        # move in the direction of the normal to avoid the obstacle
-        normal_heading = normal.normalize()
-        move_target = collide_pt + (normal_heading * entity.maxSpeed)
-        seek(entity, move_target)
+    collided, collide_pt = collisions[0]
+    normal = entity.position - collide_pt
+    # move in the direction of the normal to avoid the obstacle
+    normal_heading = normal.normalize()
+    # TODO(mrzzy): explore random perpendicular offset to heading to prevent
+    # colliding back immediately
+    move_target = collide_pt + (normal_heading * correct_dist)
+
+    return move_target
 
 
 def line_of_slight(entity, target, step_dist=20, ray_size=(4, 4)):
@@ -139,6 +144,14 @@ class Archer_TeamA(Character):
 
     def render(self, surface):
         Character.render(self, surface)
+
+        if getattr(self, "correct_pos", None) is not None:
+            pygame.draw.circle(
+                surface,
+                (255, 0, 0),
+                (int(self.correct_pos[0]), int(self.correct_pos[1])),
+                int(4),
+            )
 
     def process(self, time_passed):
 
@@ -233,6 +246,7 @@ class ArcherStateCombat_TeamA(State):
 
         State.__init__(self, "combat")
         self.archer = archer
+        self.correct_pos = None
 
     def do_actions(self):
 
@@ -242,14 +256,24 @@ class ArcherStateCombat_TeamA(State):
 
         # attack: attack target when within range
         if target_distance <= self.archer.projectile_range:
-            self.archer.velocity = Vector2(0, 0)
             if self.archer.current_ranged_cooldown <= 0:
                 attack_pos = target.position
                 # TODO(mrzzy) (shoot at moving target)
                 self.archer.ranged_attack(attack_pos)
 
-        # movement: stay only close enough to attack
-        if target_distance > self.archer.projectile_range:
+        # movement: correct movement when colliding to prevent getting stuck on walls
+        collisions = detect_collisions(self.archer)
+        if len(collisions) > 0:
+            self.correct_pos = avoid_obstacle(self.archer, collisions, 70)
+            self.archer.correct_pos = self.correct_pos
+        elif self.correct_pos is not None:
+            reached = seek(self.archer, self.correct_pos)
+            if reached:
+                self.correct_pos = None
+        elif target_distance <= self.archer.projectile_range:
+            # target within range: stop to attack
+            self.archer.velocity = Vector2(0, 0)
+        elif target_distance > self.archer.projectile_range:
             # seek target if out of range
             seek(self.archer, target.position)
         elif target_distance < self.archer.projectile_range:
@@ -262,9 +286,6 @@ class ArcherStateCombat_TeamA(State):
             move_magnitude = target_distance - self.archer.projectile_range
             move_target = move_heading * move_magnitude
             seek(self.archer, move_target)
-
-        # movement: correct movement when colliding to prevent getting stuck on walls
-        avoid_obstacle(self.archer)
 
     def check_conditions(self):
         # target is gone/lost line of sight
