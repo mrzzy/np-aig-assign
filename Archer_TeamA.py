@@ -72,6 +72,9 @@ class ArcherStateSeeking_TeamA(State):
             self.archer.velocity.normalize_ip()
             self.archer.velocity *= self.archer.maxSpeed
 
+        # patch up health while traveling
+        self.archer.heal()
+
     def check_conditions(self):
 
         # check if opponent is in range
