@@ -19,7 +19,7 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 jobs:
   lint:
-    if: ${{ github.event.label.name == 'ok-to-test' }}
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'ok-to-test') || github.event.label.name == 'ok-to-test' }}
     runs-on: ubuntu-20.04
     name: "Lint HAL source code"
     steps:
@@ -35,7 +35,7 @@ jobs:
           make lint
 
   recorded-playtest-master:
-    if: ${{ github.event.label.name == 'ok-to-test' }}
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'ok-to-test') || github.event.label.name == 'ok-to-test' }}
     runs-on: ubuntu-20.04
     name: "Recorded Playtest vs Master"
     env:
@@ -61,7 +61,7 @@ jobs:
           make run
 
   trials-playtest-master:
-    if: ${{ github.event.label.name == 'ok-to-test' }}
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'ok-to-test') || github.event.label.name == 'ok-to-test' }}
     runs-on: ubuntu-20.04
     name: "Multiple Trial Playtest vs Master"
     env:
