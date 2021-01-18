@@ -15,6 +15,7 @@ from tempfile import NamedTemporaryFile
 from statsmodels.stats.proportion import proportion_confint
 
 from Globals import TEAM_NAME, PARAMS, FINAL_SCORE_HEADER
+from util import get_mlflow_run_name
 
 ## Experiment Settings
 # no. of game trials to run for the experiment
@@ -164,7 +165,9 @@ def print_results(scores, stats, file=sys.stdout):
 if __name__ == "__main__":
     # log trial to MLFlow
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
-    with mlflow.start_run(), Pool(processes=min(os.cpu_count() * 4, N_TRIALS)) as pool:
+    with mlflow.start_run(run_name=get_mlflow_run_name()), Pool(
+        processes=min(os.cpu_count() * 4, N_TRIALS)
+    ) as pool:
         # log trial parameters to Mlflow
         params = {
             **PARAMS,
