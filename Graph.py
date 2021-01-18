@@ -1,15 +1,14 @@
 import pygame
 from pygame.math import *
 
-class Graph(object):
 
+class Graph(object):
     def __init__(self, world):
 
         self.world = world
 
-        self.connections = []           # an unordered list of connections
-        self.nodes = {}                 # dictionary of nodes, indexed by node.id
-
+        self.connections = []  # an unordered list of connections
+        self.nodes = {}  # dictionary of nodes, indexed by node.id
 
     # returns the connections of from-node as an unordered list
     def getConnections(self, fromNode):
@@ -18,16 +17,14 @@ class Graph(object):
         for con in self.connections:
             if con.fromNode.id == fromNode.id:
                 cons.append(con)
-                
+
         return cons
-    
 
     # adds a connection
     def addConnection(self, fromNode, toNode, cost):
 
         connection = Connection(self, cost, fromNode, toNode)
         self.connections.append(connection)
-
 
     # returns True if this connection exists, False otherwise
     def hasConnection(self, fromNode, toNode):
@@ -36,18 +33,18 @@ class Graph(object):
                 return True
 
         return False
-    
 
     def render(self, surface):
 
         # draw the connections
         for con in self.connections:
-            pygame.draw.line(surface, (100, 255, 0), con.fromNode.position, con.toNode.position)
+            pygame.draw.line(
+                surface, (100, 255, 0), con.fromNode.position, con.toNode.position
+            )
 
         # draw the nodes
         for nodeKey in self.nodes:
             pygame.draw.circle(surface, (200, 255, 0), self.nodes[nodeKey].position, 5)
-
 
     # --- returns nearest node to given position ---
     def get_nearest_node(self, position):
@@ -64,10 +61,9 @@ class Graph(object):
                     nearest_distance = distance
 
         return nearest
-            
-            
-class Connection(object):
 
+
+class Connection(object):
     def __init__(self, graph, cost, fromNode, toNode):
 
         self.graph = graph
@@ -77,14 +73,13 @@ class Connection(object):
 
 
 class Node(object):
-
     def __init__(self, graph, id, x, y):
-        
+
         self.id = id
         self.graph = graph
         self.position = (x, y)
         self.connections = []
-        
+
     # add a directed connection to toNode
     def addConnection(self, toNode, cost):
 
@@ -94,8 +89,7 @@ class Node(object):
 
 
 class NodeRecord:
-
-    def __init__(self, node, connection, costSoFar, estimatedCost = 0):
+    def __init__(self, node, connection, costSoFar, estimatedCost=0):
         self.node = node
         self.connection = connection
         self.costSoFar = costSoFar
@@ -117,7 +111,7 @@ def pathFindAStar(graph, start, end):
     while openList:
 
         # get smallest element in open list
-        current = min(openList.items(), key = lambda record : record[1].estimatedCost)[1]
+        current = min(openList.items(), key=lambda record: record[1].estimatedCost)[1]
 
         del openList[current.node.id]
 
@@ -133,17 +127,23 @@ def pathFindAStar(graph, start, end):
             if endNode.id in closedList.keys():
                 continue
 
-            elif endNode.id in openList.keys():                
+            elif endNode.id in openList.keys():
                 if openList[endNode.id].costSoFar > endNodeCost:
                     openList[endNode.id].costSoFar = endNodeCost
                     openList[endNode.id].connection = con
-                    openList[endNode.id].estimatedCost = endNodeCost + heuristic(graph, endNode, end)
+                    openList[endNode.id].estimatedCost = endNodeCost + heuristic(
+                        graph, endNode, end
+                    )
 
             else:
-                openList[endNode.id] = NodeRecord(endNode, con, endNodeCost, endNodeCost + heuristic(graph, endNode, end))
+                openList[endNode.id] = NodeRecord(
+                    endNode,
+                    con,
+                    endNodeCost,
+                    endNodeCost + heuristic(graph, endNode, end),
+                )
 
         closedList[current.node.id] = current
-
 
     if current.node.id != end.id:
         return None

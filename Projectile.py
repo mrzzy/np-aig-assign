@@ -4,7 +4,6 @@ from GameEntity import *
 
 # --- A fireball explosion that hits all opponents ---
 class Explosion(GameEntity):
-
     def __init__(self, owner, world, image, damage, position, team_id):
 
         GameEntity.__init__(self, world, "explosion", image, False)
@@ -15,13 +14,11 @@ class Explosion(GameEntity):
         self.position = position
         self.team_id = team_id
         self.exploded = False
-        self.exist_time = .5        # explosion stays on screen for half a second
-
+        self.exist_time = 0.5  # explosion stays on screen for half a second
 
     def render(self, surface):
 
         GameEntity.render(self, surface)
-        
 
     def process(self, time_passed):
 
@@ -29,7 +26,9 @@ class Explosion(GameEntity):
 
         # --- self.exploded is set to True after the first call, so this happens only once ---
         if not self.exploded:
-            collide_list = pygame.sprite.spritecollide(self, self.world.entities.values(), False, pygame.sprite.collide_mask)
+            collide_list = pygame.sprite.spritecollide(
+                self, self.world.entities.values(), False, pygame.sprite.collide_mask
+            )
             for entity in collide_list:
                 if entity.team_id == self.team_id:
                     continue
@@ -37,34 +36,31 @@ class Explosion(GameEntity):
                     continue
                 if entity.name == "obstacle":
                     continue
-                
+
                 entity.current_hp -= self.damage
                 self.owner.xp += self.damage
                 self.exploded = True
 
         self.exist_time -= time_passed
-            
+
         if self.exist_time <= 0:
             self.world.remove_entity(self)
 
 
 class Projectile(GameEntity):
-
-    def __init__(self, owner, world, image, explosive_image = None):
+    def __init__(self, owner, world, image, explosive_image=None):
 
         GameEntity.__init__(self, world, "projectile", image, False)
 
         self.owner = owner
         self.max_range = 100
-        self.damage = 0.
+        self.damage = 0.0
         self.origin_position = Vector2(0, 0)
         self.explosive_image = explosive_image
-
 
     def render(self, surface):
 
         GameEntity.render(self, surface)
-        
 
     def process(self, time_passed):
 
@@ -80,7 +76,12 @@ class Projectile(GameEntity):
 
             # deal damage to opponent if it collides
             else:
-                collide_list = pygame.sprite.spritecollide(self, self.world.entities.values(), False, pygame.sprite.collide_mask)
+                collide_list = pygame.sprite.spritecollide(
+                    self,
+                    self.world.entities.values(),
+                    False,
+                    pygame.sprite.collide_mask,
+                )
                 for entity in collide_list:
                     if entity.team_id == self.team_id:
                         continue
@@ -89,12 +90,11 @@ class Projectile(GameEntity):
                     if entity.name == "obstacle":
                         self.world.remove_entity(self)
                         return
-                    
+
                     entity.current_hp -= self.damage
                     self.owner.xp += self.damage
                     self.world.remove_entity(self)
                     return
-
 
         # explosive projectiles - will explode when it reaches max_range
         else:
@@ -104,13 +104,25 @@ class Projectile(GameEntity):
 
             # will explode if it hits an obstacle
             if not exploded:
-                collide_list = pygame.sprite.spritecollide(self, self.world.entities.values(), False, pygame.sprite.collide_mask)
+                collide_list = pygame.sprite.spritecollide(
+                    self,
+                    self.world.entities.values(),
+                    False,
+                    pygame.sprite.collide_mask,
+                )
                 for entity in collide_list:
                     if entity.name == "obstacle":
                         exploded = True
 
             if exploded:
-                explosion = Explosion(self.owner, self.world, self.explosive_image, self.damage, self.position, self.team_id)
+                explosion = Explosion(
+                    self.owner,
+                    self.world,
+                    self.explosive_image,
+                    self.damage,
+                    self.position,
+                    self.team_id,
+                )
                 self.world.add_entity(explosion)
                 self.world.remove_entity(self)
                 return
