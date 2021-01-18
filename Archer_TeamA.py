@@ -251,7 +251,7 @@ class ArcherStateCombat_TeamA(State):
     def do_actions(self):
 
         target = self.archer.target
-        target_distance = (self.archer.position - target.position).length()
+        target_distance = (target.position - self.archer.position).length()
         current_pos = self.archer.position
 
         # attack: attack target when within range
@@ -270,7 +270,7 @@ class ArcherStateCombat_TeamA(State):
             reached = seek(self.archer, self.correct_pos)
             if reached:
                 self.correct_pos = None
-        elif target_distance <= self.archer.projectile_range:
+        elif target_distance == self.archer.projectile_range:
             # target within range: stop to attack
             self.archer.velocity = Vector2(0, 0)
         elif target_distance > self.archer.projectile_range:
