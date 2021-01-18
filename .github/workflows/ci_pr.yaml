@@ -58,7 +58,9 @@ jobs:
           make deps
       - name: "Playtest against Master"
         run: |
-          make run
+          # manually pass mlflow run name as github actions runs against merge commit
+          # which is not very descriptive as a run name
+          env MLFLOW_RUN="$(git log --format=%B -n 1 ${GITHUB_HEAD_REF} | head -n 1)" make run
 
   trials-playtest-master:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'ok-to-test') || github.event.label.name == 'ok-to-test' }}
@@ -84,5 +86,7 @@ jobs:
           make deps
       - name: "Playtest against Master"
         run: |
-          make run-trials
+          # manually pass mlflow run name as github actions runs against merge commit
+          # which is not very descriptive as a run name
+          env MLFLOW_RUN="$(git log --format=%B -n 1 ${GITHUB_HEAD_REF} | head -n 1)" make run-trials
 

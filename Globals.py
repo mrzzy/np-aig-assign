@@ -58,18 +58,10 @@ os.environ["MLFLOW_TRACKING_URI"] = os.environ.get(
 MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "np-aig-records")
 
 # the name of the MLFlow run to use when logging to mlflow with MLFlowLogger
-# defaults to the first line of the last git commit message that is also
-# not a merge commit (ie commit with more than on parent).
+# defaults to the first line of the last git commit message.
 repo = Repo(search_parent_directories=True)
 get_title = lambda c: c.message.splitlines()[0]
-default_run_name = get_title(repo.head.commit)
-for commit in repo.iter_commits():
-    # ignore merge commits.
-    if len(commit.parents) > 1:
-        continue
-    # extract message from non-merge commit
-    default_run_name = get_title(commit)
-MLFLOW_RUN = str(os.environ.get("MLFLOW_RUN", default_run_name))
+MLFLOW_RUN = str(os.environ.get("MLFLOW_RUN", get_title(repo.head.commit)))
 
 # whether to return a non zero status if Team B/Red wins
 RED_WIN_NONZERO_STATUS = bool(
