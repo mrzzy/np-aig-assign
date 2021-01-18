@@ -70,8 +70,16 @@ def compute_statistics(scores):
     """
     Compute statistics from the given scores.
     """
-    team_red_wins = np.sum(np.argmax(scores, axis=-1))
-    team_blue_wins = N_TRIALS - team_red_wins
+    # tabulate wins for each team
+    team_red_wins, team_blue_wins = 0, 0
+    for score in scores:
+        team_blue_score, team_red_score = score
+        if team_red_score > team_blue_wins:
+            team_red_wins += 1
+        elif team_blue_wins > team_red_wins:
+            team_blue_wins += 1
+        # draw does not count as a win for either team
+
     # compute the proportion/ratio of wins
     team_blue_win_ratio, team_red_win_ratio = (
         team_blue_wins / N_TRIALS,
