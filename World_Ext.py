@@ -13,8 +13,10 @@ from GameEntity import GameEntity
 # Obstacle Graphs
 mountain_2_path = []
 
+
 def _load_path():
     cache = {}
+
     def load_path(filename):
         # memoize the data returned
         nonlocal cache
@@ -32,6 +34,7 @@ def _load_path():
 
     return load_path
 
+
 load_path = _load_path()
 
 
@@ -43,19 +46,13 @@ def perpendicular_unit(vec: Vector2) -> Vector2:
     # with this information we get this formula: y2 = -x1/y1
     x1, y1 = vec
     if y1 == 0:
-        return Vector2(
-            0,
-            1
-        )
+        return Vector2(0, 1)
 
-    return Vector2(
-        1,
-        -x1/y1
-    ).normalize()
+    return Vector2(1, -x1 / y1).normalize()
 
 
 def dot_prod(vec1: Vector2, vec2: Vector2) -> int:
-    return vec1[0]*vec2[0] + vec1[1]*vec2[1]
+    return vec1[0] * vec2[0] + vec1[1] * vec2[1]
 
 
 def proj_vec(vec1: Vector2, vec2: Vector2) -> Vector2:
@@ -69,7 +66,9 @@ def unit_proj_vec(vec1: Vector2, vec2: Vector2) -> Vector2:
     return vec.normalize()
 
 
-def foot_of_perpendicular(pos: Vector2, line_start: Vector2, line_end: Vector2) -> Vector2:
+def foot_of_perpendicular(
+    pos: Vector2, line_start: Vector2, line_end: Vector2
+) -> Vector2:
     # Project the position onto the line
     foot_vec = proj_vec((pos - line_start), (line_end - line_start).normalize())
     return line_start + foot_vec
@@ -189,16 +188,15 @@ def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vecto
         path[(closest_node + 1) % len(path)],
         path[closest_node],
     )
-    edge1_vec = path[(closest_node + 1) % len(path)] - \
-        path[closest_node]
+    edge1_vec = path[(closest_node + 1) % len(path)] - path[closest_node]
     d_to_edge1_foot = position.distance_to(edge1_foot)
 
     edge2_foot = foot_of_perpendicular(
         position,
-        path[closest_node-1],
+        path[closest_node - 1],
         path[closest_node],
     )
-    edge2_vec = path[closest_node] - path[closest_node-1]
+    edge2_vec = path[closest_node] - path[closest_node - 1]
     d_to_edge2_foot = position.distance_to(edge2_foot)
 
     if d_to_edge1_foot < d_to_edge2_foot:
@@ -213,6 +211,7 @@ def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vecto
         "foot": edge2_foot,
         "distance": d_to_edge2_foot,
     }
+
 
 def avoid_obstacle(
     obstacle_path: List[Vector2],
@@ -233,7 +232,13 @@ def avoid_obstacle(
     #   X -- vec_to_foot -> |foot| -- right_vec -->
     #                         |
     right_vec = rotate_right(closest_edge["vec"]).normalize()
-    vec_to_foot = (closest_edge["foot"] - avoider.position).normalize()
+    vec_to_foot = closest_edge["foot"] - avoider.position
+    if vec_to_foot.length() == 0:
+        # Ignore if the current position is on the foot
+        return Vector2(0, 0)
+    else:
+        vec_to_foot.normalize_ip()
+
     if vec_to_foot == right_vec:
         return Vector2(0, 0)
 
@@ -250,9 +255,7 @@ def avoid_obstacle(
 
     # Move towards the path based on how far the entity is from path
     # The further the entity is from the path, the more the bias is ignored
-    foot_bias_ratio = (
-        min(closest_edge["distance"], MAX_DISTANCE)
-    ) / MAX_DISTANCE
+    foot_bias_ratio = (min(closest_edge["distance"], MAX_DISTANCE)) / MAX_DISTANCE
     vec = (closest_edge["foot"] - avoider.position).normalize() * foot_bias_ratio
     vec += biased_dir.normalize() * (1 - foot_bias_ratio)
     return vec

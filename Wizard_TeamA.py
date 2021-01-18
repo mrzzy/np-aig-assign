@@ -13,6 +13,7 @@ from World_Ext import *
 # Assume no enemy will have a ranged attack upgraded beyond 5 levels
 FLEE_RADIUS = 220 * 1.1 ** 5
 
+
 class Wizard_TeamA(Character):
     def __init__(
         self, world, image, projectile_image, base, position, explosion_image=None
@@ -55,7 +56,10 @@ class Wizard_TeamA(Character):
             if not self.ko:
                 for flee_target in self.flee_targets:
                     pygame.draw.line(
-                        surface, (0, 255, 0), self.position, flee_target.position,
+                        surface,
+                        (0, 255, 0),
+                        self.position,
+                        flee_target.position,
                     )
 
     def process(self, time_passed):
@@ -152,9 +156,7 @@ class WizardStateAttacking_TeamA(State):
                 if self.wizard.target.name in {"tower", "base"}:
                     position = Vector2(881, 626)
 
-                self.wizard.ranged_attack(
-                    position, self.wizard.explosion_image
-                )
+                self.wizard.ranged_attack(position, self.wizard.explosion_image)
 
         else:
             self.wizard.velocity = self.wizard.target.position - self.wizard.position
@@ -180,6 +182,7 @@ class WizardStateAttacking_TeamA(State):
 
         return None
 
+
 class WizardStateFleeing_TeamA(State):
     def __init__(self, wizard):
         super().__init__("fleeing")
@@ -192,10 +195,9 @@ class WizardStateFleeing_TeamA(State):
 
         # Get all hostile entities within FLEE_RADIUS
         hostile_entities = [
-            e for e in
-            self.wizard.world.entities.values()
-            if is_in_radius(e, self.wizard, FLEE_RADIUS)
-                and is_hostile(e, self.wizard)
+            e
+            for e in self.wizard.world.entities.values()
+            if is_in_radius(e, self.wizard, FLEE_RADIUS) and is_hostile(e, self.wizard)
         ]
 
         # Dodge immediate threats
