@@ -43,7 +43,7 @@ jobs:
       LOGGER: "MLFlowLogger"
       CAMERA: "OpenCVCamera"
       MLFLOW_EXPERIMENT: "np-aig-records"
-      NPC_BLUE_SRCS: "master/Knight_TeamA.py,master/Archer_TeamA.py,master/Wizard_TeamA.py"
+      NPC_RED_SRCS: "master/Knight_TeamA.py,master/Archer_TeamA.py,master/Wizard_TeamA.py"
     steps:
       - uses: actions/checkout@v2
       - uses: actions/checkout@v2
