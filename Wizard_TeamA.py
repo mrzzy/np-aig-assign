@@ -146,8 +146,14 @@ class WizardStateAttacking_TeamA(State):
         if opponent_distance <= self.wizard.min_target_distance:
             self.wizard.velocity = Vector2(0, 0)
             if self.wizard.current_ranged_cooldown <= 0:
+                position = self.wizard.target.position
+
+                # Hit all three things when possible
+                if self.wizard.target.name in {"tower", "base"}:
+                    position = Vector2(881, 626)
+
                 self.wizard.ranged_attack(
-                    self.wizard.target.position, self.wizard.explosion_image
+                    position, self.wizard.explosion_image
                 )
 
         else:
