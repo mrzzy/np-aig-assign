@@ -77,7 +77,7 @@ def foot_of_perpendicular(pos: Vector2, line_start: Vector2, line_end: Vector2) 
 
 def rotate_right(vec: Vector2) -> Vector2:
     """Rotates a vector 90 degrees to the right"""
-    return Vector2(vec[1], -vec[0])
+    return Vector2(-vec[1], vec[0])
 
 
 # Finding entities
@@ -217,9 +217,10 @@ def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vecto
 def avoid_obstacle(
     obstacle_path: List[Vector2],
     avoider: GameEntity,
-    bias: Vector2
+    bias: Vector2,
 ):
-    MAX_DISTANCE = 50.0
+    IGNORE_DISTANCE = 20.0
+    MAX_DISTANCE = 8.0
 
     # Decide on which edge to go towards
     closest_edge = find_closest_edge(obstacle_path, avoider.position)
@@ -234,12 +235,12 @@ def avoid_obstacle(
     right_vec = rotate_right(closest_edge["vec"]).normalize()
     vec_to_foot = (closest_edge["foot"] - avoider.position).normalize()
     if vec_to_foot == right_vec:
-        return bias
+        return Vector2(0, 0)
 
     # Return the bias if it is not close to the entity
     # There is no need to avoid the obstacle if the obstacle is not near
-    if closest_edge["distance"] > MAX_DISTANCE:
-        return bias
+    if closest_edge["distance"] > IGNORE_DISTANCE:
+        return Vector2(0, 0)
 
     # Decide on which direction along the edge to go towards based on the bias
     # e.g. clockwise or anti-clockwise
@@ -249,13 +250,15 @@ def avoid_obstacle(
 
     # Move towards the path based on how far the entity is from path
     # The further the entity is from the path, the more the bias is ignored
-    foot_bias_ratio = (MAX_DISTANCE - closest_edge["distance"]) / MAX_DISTANCE
-    vec = (avoider.position - closest_edge["foot"]).normalize() * foot_bias_ratio
+    foot_bias_ratio = (
+        min(closest_edge["distance"], MAX_DISTANCE)
+    ) / MAX_DISTANCE
+    vec = (closest_edge["foot"] - avoider.position).normalize() * foot_bias_ratio
     vec += biased_dir.normalize() * (1 - foot_bias_ratio)
     return vec
 
 
-def avoid_obstacles(avoider: GameEntity, bias: Vector2):
+def avoid_obstacles(avoider: GameEntity, bias: Vector2) -> Vector2:
     # Names are solely for debugging purposes
     paths = {
         "mountain_1": load_path("mountain_1_path.txt"),
@@ -263,10 +266,14 @@ def avoid_obstacles(avoider: GameEntity, bias: Vector2):
         "plateau": load_path("plateau_path.txt"),
     }
 
-    final_vec = Vector2(*bias)
+    final_vec = Vector2(0, 0)
     for path in paths.values():
         avoid_vec = avoid_obstacle(path, avoider, bias)
         final_vec += avoid_vec
+
+    # If there are no changes to be made to the direction, return the bias
+    if final_vec.length() == 0:
+        return bias
 
     return final_vec
 
