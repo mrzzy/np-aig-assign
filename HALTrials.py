@@ -74,9 +74,9 @@ def compute_statistics(scores):
     team_red_wins, team_blue_wins = 0, 0
     for score in scores:
         team_blue_score, team_red_score = score
-        if team_red_score > team_blue_wins:
+        if team_red_score > team_blue_score:
             team_red_wins += 1
-        elif team_blue_wins > team_red_wins:
+        elif team_blue_score > team_red_score:
             team_blue_wins += 1
         # draw does not count as a win for either team
 
