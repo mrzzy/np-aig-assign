@@ -193,22 +193,28 @@ class WizardStateFleeing_TeamA(State):
         ]
 
         # Dodge immediate threats
-        immediate_threats = [
-            e for e in hostile_entities
-            if is_immediate_threat(self.wizard, e)
-        ]
-        if immediate_threats:
-            print("fleeing from:", [x.name for x in immediate_threats])
-
+        immediate_threats = []
+        non_immediate_threats = []
+        for e in hostile_entities:
+            if is_immediate_threat(self.wizard, e):
+                immediate_threats.append(e)
+                continue
+            non_immediate_threats.append(e)
 
         # Set flee targets
         self.wizard.flee_targets = immediate_threats
 
-        # Calculate the flee direction from all the threats
+        # # Calculate the flee direction from all the threats
         final_direction = avoid_entities(self.wizard, immediate_threats)
 
-        # Move along the obstacle lines if near them
+        if not immediate_threats:
+            final_direction = avoid_entities(self.wizard, non_immediate_threats)
+
+        # # Move along the obstacle lines if near them
         final_direction = avoid_obstacles(self.wizard, final_direction)
+
+        # Glide along edges
+        final_direction = avoid_edges(self.wizard.position, final_direction)
 
         # Flee
         self.wizard.velocity = final_direction

@@ -150,6 +150,7 @@ def has_constant_direction(entity: GameEntity):
     return False
 
 
+# Avoiding entities and obstacles
 def find_closest_node(
     path: List[Vector2],
     position: Vector2,
@@ -270,7 +271,6 @@ def avoid_obstacles(avoider: GameEntity, bias: Vector2):
     return final_vec
 
 
-# Avoiding entities
 def avoid_entities(avoider: GameEntity, entities: List[GameEntity]) -> Vector2:
     final_direction = Vector2(0, 0)
     for entity in entities:
@@ -282,18 +282,23 @@ def avoid_entities(avoider: GameEntity, entities: List[GameEntity]) -> Vector2:
         # Dodge away
         final_direction += avoider.position - entity.position
 
+    return final_direction
+
+
+def avoid_edges(position: Vector2, bias: Vector2):
+    TOLERANCE = 10
+    final_direction = bias
+
     # Run upwards or downwards if at the edge of the screen
-    if avoider.position.x > (SCREEN_WIDTH - 10) \
-            or avoider.position.x < 10:
+    if position.x > (SCREEN_WIDTH - TOLERANCE) or position.x < TOLERANCE:
         final_direction = unit_proj_vec(final_direction, Vector2(0, 1))
         # Enemy is directly on the right or left
         if final_direction.length() == 0:
             # Randomly pick to move up or down
             final_direction = random.choice([Vector2(0, 1), Vector2(0, -1)])
 
-    if avoider.position.y > (SCREEN_HEIGHT - 10) \
-            or avoider.position.y < 10:
-        final_direction = unit_proj_vec(final_direction, Vector2(0, 1))
+    if position.y > (SCREEN_HEIGHT - TOLERANCE) or position.y < TOLERANCE:
+        final_direction = unit_proj_vec(final_direction, Vector2(1, 0))
         if final_direction.length() == 0:
             # Randomly pick to move up or down
             final_direction = random.choice([Vector2(1, 0), Vector2(-1, 0)])
