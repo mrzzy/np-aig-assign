@@ -157,7 +157,7 @@ class WizardStateAttacking_TeamA(State):
                 self.wizard.velocity *= self.wizard.maxSpeed
 
     def check_conditions(self):
-        if self.wizard.current_hp <= self.wizard.max_hp * 0.5:
+        if self.wizard.current_hp <= self.wizard.max_hp * 0.3:
             return "fleeing"
 
         # target is gone
