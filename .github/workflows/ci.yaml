@@ -22,8 +22,6 @@ jobs:
     name: "Lint HAL source code"
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
@@ -45,8 +43,6 @@ jobs:
       MLFLOW_EXPERIMENT: "np-aig-records"
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
@@ -68,8 +64,6 @@ jobs:
       MLFLOW_EXPERIMENT: "np-aig-records"
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
@@ -91,8 +85,6 @@ jobs:
       N_TRIALS: 41
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
@@ -114,8 +106,6 @@ jobs:
       N_TRIALS: 41
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
