@@ -679,7 +679,7 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
 
         print("Game has ended")
         print(
-            "Final Score:",
+            FINAL_SCORE_HEADER,
             " ".join(
                 f"{team}: {score}" for team, score in zip(TEAM_NAME, world.scores)
             ),

@@ -14,7 +14,7 @@ from multiprocessing.pool import Pool
 from tempfile import NamedTemporaryFile
 from statsmodels.stats.proportion import proportion_confint
 
-from Globals import TEAM_NAME, PARAMS
+from Globals import TEAM_NAME, PARAMS, FINAL_SCORE_HEADER
 
 ## Experiment Settings
 # no. of game trials to run for the experiment
@@ -59,7 +59,7 @@ def run_trial(n_trail):
 
     # extract game score from game stdout
     out_lines = hal_run.stdout.decode("utf-8").splitlines()
-    match_lines = [l for l in out_lines if "final score" in l.lower()]
+    match_lines = [l for l in out_lines if FINAL_SCORE_HEADER in l]
     scores = [
         int(t) for t in match_lines[0].replace(":", "").split(" ") if str.isdigit(t)
     ]
