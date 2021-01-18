@@ -1,10 +1,17 @@
 import pygame
+from pygame.math import *
 
-from random import randint, random
+from random import randint
+
 from Graph import *
 
 from Character import *
 from State import *
+
+from World_Ext import *
+
+# Assume no enemy will have a ranged attack upgraded beyond 5 levels
+FLEE_RADIUS = 220 * 1.1 ** 5
 
 
 class Wizard_TeamA(Character):
@@ -21,6 +28,7 @@ class Wizard_TeamA(Character):
         self.position = position
         self.move_target = GameEntity(world, "wizard_move_target", None)
         self.target = None
+        self.flee_targets = []
 
         self.maxSpeed = 50
         self.min_target_distance = 100
@@ -28,10 +36,12 @@ class Wizard_TeamA(Character):
         self.projectile_speed = 100
 
         seeking_state = WizardStateSeeking_TeamA(self)
+        fleeing_state = WizardStateFleeing_TeamA(self)
         attacking_state = WizardStateAttacking_TeamA(self)
         ko_state = WizardStateKO_TeamA(self)
 
         self.brain.add_state(seeking_state)
+        self.brain.add_state(fleeing_state)
         self.brain.add_state(attacking_state)
         self.brain.add_state(ko_state)
 
@@ -41,20 +51,23 @@ class Wizard_TeamA(Character):
 
         Character.render(self, surface)
 
+        # Show flee targets if any
+        if DEBUG or True:
+            if not self.ko:
+                for flee_target in self.flee_targets:
+                    pygame.draw.line(
+                        surface,
+                        (0, 255, 0),
+                        self.position,
+                        flee_target.position,
+                    )
+
     def process(self, time_passed):
 
         Character.process(self, time_passed)
 
-        level_up_stats = [
-            "hp",
-            "speed",
-            "ranged damage",
-            "ranged cooldown",
-            "projectile range",
-        ]
         if self.can_level_up():
-            choice = randint(0, len(level_up_stats) - 1)
-            self.level_up(level_up_stats[choice])
+            self.level_up("ranged cooldown")
 
 
 class WizardStateSeeking_TeamA(State):
@@ -75,6 +88,8 @@ class WizardStateSeeking_TeamA(State):
             self.wizard.velocity *= self.wizard.maxSpeed
 
     def check_conditions(self):
+        if self.wizard.current_hp <= self.wizard.max_hp * 0.5:
+            return "fleeing"
 
         # check if opponent is in range
         nearest_opponent = self.wizard.world.get_nearest_opponent(self.wizard)
@@ -135,9 +150,17 @@ class WizardStateAttacking_TeamA(State):
         if opponent_distance <= self.wizard.min_target_distance:
             self.wizard.velocity = Vector2(0, 0)
             if self.wizard.current_ranged_cooldown <= 0:
-                self.wizard.ranged_attack(
-                    self.wizard.target.position, self.wizard.explosion_image
-                )
+                position = self.wizard.target.position
+
+                # Hit all three things when possible
+                if self.wizard.target.name in {"tower", "base"}:
+                    # Right-side base
+                    position = Vector2(881, 626)
+                    # Flip if the target base is the left-side base
+                    if self.wizard.target.position.x > 1024:
+                        position = Vector2(*SCREEN_SIZE) - position
+
+                self.wizard.ranged_attack(position, self.wizard.explosion_image)
 
         else:
             self.wizard.velocity = self.wizard.target.position - self.wizard.position
@@ -146,6 +169,8 @@ class WizardStateAttacking_TeamA(State):
                 self.wizard.velocity *= self.wizard.maxSpeed
 
     def check_conditions(self):
+        if self.wizard.current_hp <= self.wizard.max_hp * 0.3:
+            return "fleeing"
 
         # target is gone
         if (
@@ -160,6 +185,58 @@ class WizardStateAttacking_TeamA(State):
     def entry_actions(self):
 
         return None
+
+
+class WizardStateFleeing_TeamA(State):
+    def __init__(self, wizard):
+        super().__init__("fleeing")
+        self.wizard = wizard
+
+    def do_actions(self):
+        # Try and heal
+        if self.wizard.current_hp != self.wizard.max_hp:
+            self.wizard.heal()
+
+        # Get all hostile entities within FLEE_RADIUS
+        hostile_entities = [
+            e
+            for e in self.wizard.world.entities.values()
+            if is_in_radius(e, self.wizard, FLEE_RADIUS) and is_hostile(e, self.wizard)
+        ]
+
+        # Dodge immediate threats
+        immediate_threats = []
+        non_immediate_threats = []
+        for e in hostile_entities:
+            if is_immediate_threat(self.wizard, e):
+                immediate_threats.append(e)
+                continue
+            non_immediate_threats.append(e)
+
+        # Set flee targets
+        self.wizard.flee_targets = immediate_threats
+
+        # # Calculate the flee direction from all the threats
+        final_direction = avoid_entities(self.wizard, immediate_threats)
+
+        if not immediate_threats:
+            final_direction = avoid_entities(self.wizard, non_immediate_threats)
+
+        # # Move along the obstacle lines if near them
+        final_direction = avoid_obstacles(self.wizard, final_direction)
+
+        # Glide along edges
+        final_direction = avoid_edges(self.wizard.position, final_direction)
+
+        # Flee
+        self.wizard.velocity = final_direction
+        if self.wizard.velocity.length() > 0:
+            self.wizard.velocity.normalize_ip()
+            self.wizard.velocity *= self.wizard.maxSpeed
+
+    def check_conditions(self):
+        if self.wizard.current_hp == self.wizard.max_hp:
+            return "seeking"
 
 
 class WizardStateKO_TeamA(State):
