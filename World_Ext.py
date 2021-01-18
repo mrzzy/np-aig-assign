@@ -42,6 +42,12 @@ def perpendicular_unit(vec: Vector2) -> Vector2:
     # zero. We can pick a random value for the other vector's x (1). Solving
     # with this information we get this formula: y2 = -x1/y1
     x1, y1 = vec
+    if y1 == 0:
+        return Vector2(
+            0,
+            1
+        )
+
     return Vector2(
         1,
         -x1/y1
@@ -67,6 +73,11 @@ def foot_of_perpendicular(pos: Vector2, line_start: Vector2, line_end: Vector2) 
     # Project the position onto the line
     foot_vec = proj_vec((pos - line_start), (line_end - line_start).normalize())
     return line_start + foot_vec
+
+
+def rotate_right(vec: Vector2) -> Vector2:
+    """Rotates a vector 90 degrees to the right"""
+    return Vector2(vec[1], -vec[0])
 
 
 # Finding entities
@@ -139,10 +150,6 @@ def has_constant_direction(entity: GameEntity):
     return False
 
 
-def is_mountain_2(entity: GameEntity):
-    return entity.position == Vector2(620, 280)
-
-
 def find_closest_node(
     path: List[Vector2],
     position: Vector2,
@@ -150,16 +157,16 @@ def find_closest_node(
     closest_vec = None
     closest_dist = None
 
-    for vec in path:
+    for index, vec in enumerate(path):
         dist = position.distance_to(vec)
 
         if closest_vec is None:
-            closest_vec = len(mountain_2_path) - 1
+            closest_vec = index
             closest_dist = dist
             continue
 
         if dist < closest_dist:
-            closest_vec = len(mountain_2_path) - 1
+            closest_vec = index
             closest_dist = dist
 
     return (closest_vec, path[closest_vec])
@@ -172,7 +179,8 @@ def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vecto
             "vec": edge vector,
             "foot": foot of perpendicular location,
             "distance": distance to foot of perpendicular
-        }"""
+        }
+    """
     closest_node = find_closest_node(path, position)[0]
 
     edge1_foot = foot_of_perpendicular(
@@ -189,7 +197,7 @@ def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vecto
         path[closest_node-1],
         path[closest_node],
     )
-    edge2_vec = path[closest_node-1] - path[closest_node]
+    edge2_vec = path[closest_node] - path[closest_node-1]
     d_to_edge2_foot = position.distance_to(edge2_foot)
 
     if d_to_edge1_foot < d_to_edge2_foot:
@@ -210,14 +218,26 @@ def avoid_obstacle(
     avoider: GameEntity,
     bias: Vector2
 ):
-    MAX_DISTANCE = 30.0
+    MAX_DISTANCE = 50.0
 
     # Decide on which edge to go towards
     closest_edge = find_closest_edge(obstacle_path, avoider.position)
 
+    # Return if the avoider is not within the path
+    # An avoider is within the path if the vec to foot is the opposite of the
+    # clockwise rotation of the edge's vec.
+    # It is assumed that the path points go clockwise:
+    #                         |
+    #   X -- vec_to_foot -> |foot| -- right_vec -->
+    #                         |
+    right_vec = rotate_right(closest_edge["vec"]).normalize()
+    vec_to_foot = (closest_edge["foot"] - avoider.position).normalize()
+    if vec_to_foot == right_vec:
+        return bias
+
     # Return the bias if it is not close to the entity
     # There is no need to avoid the obstacle if the obstacle is not near
-    if closest_edge["distance"] < MAX_DISTANCE:
+    if closest_edge["distance"] > MAX_DISTANCE:
         return bias
 
     # Decide on which direction along the edge to go towards based on the bias
@@ -235,15 +255,17 @@ def avoid_obstacle(
 
 
 def avoid_obstacles(avoider: GameEntity, bias: Vector2):
-    paths = [
-        load_path("mountain_1_path.txt"),
-        load_path("mountain_2_path.txt"),
-        load_path("plateau_path.txt"),
-    ]
+    # Names are solely for debugging purposes
+    paths = {
+        "mountain_1": load_path("mountain_1_path.txt"),
+        "mountain_2": load_path("mountain_2_path.txt"),
+        "plateau": load_path("plateau_path.txt"),
+    }
 
-    final_vec = bias
-    for path in paths:
-        final_vec += avoid_obstacle(path, avoider, bias)
+    final_vec = Vector2(*bias)
+    for path in paths.values():
+        avoid_vec = avoid_obstacle(path, avoider, bias)
+        final_vec += avoid_vec
 
     return final_vec
 

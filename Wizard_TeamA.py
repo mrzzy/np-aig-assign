@@ -50,14 +50,6 @@ class Wizard_TeamA(Character):
 
         Character.render(self, surface)
 
-        pygame.draw.circle(
-            surface,
-            (0, 0, 0),
-            (int(self.position[0]), int(self.position[1])),
-            int(100),
-            int(2),
-        )
-
         # Show flee targets if any
         if DEBUG or True:
             if not self.ko:
@@ -70,15 +62,7 @@ class Wizard_TeamA(Character):
 
         Character.process(self, time_passed)
 
-        level_up_stats = [
-            "hp",
-            "speed",
-            "ranged damage",
-            "ranged cooldown",
-            "projectile range",
-        ]
         if self.can_level_up():
-            choice = randint(0, len(level_up_stats) - 1)
             self.level_up("ranged cooldown")
 
 
