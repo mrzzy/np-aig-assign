@@ -1,4 +1,5 @@
 import os
+from git import Repo
 from distutils.util import strtobool
 
 
@@ -55,6 +56,12 @@ os.environ["MLFLOW_TRACKING_URI"] = os.environ.get(
 # NOPCamera - does not record anything
 # OpenCVCamera - records game frames and stiches them together into a MP4 video
 MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "np-aig-records")
+
+# the name of the MLFlow run to use when logging to mlflow with MLFlowLogger
+# defaults to the first line of the last git commit message.
+repo = Repo(search_parent_directories=True)
+get_title = lambda c: c.message.splitlines()[0]
+MLFLOW_RUN = str(os.environ.get("MLFLOW_RUN", get_title(repo.head.commit)))
 
 # whether to return a non zero status if Team B/Red wins
 RED_WIN_NONZERO_STATUS = bool(
@@ -143,6 +150,8 @@ UP_PERCENTAGE_RANGED_COOLDOWN = 10
 UP_PERCENTAGE_PROJECTILE_RANGE = 10
 UP_PERCENTAGE_HEALING = 20
 UP_PERCENTAGE_HEALING_COOLDOWN = 10
+
+FINAL_SCORE_HEADER = "Final Score:"
 
 PARAMS = {
     "debug": DEBUG,

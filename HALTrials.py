@@ -14,7 +14,7 @@ from multiprocessing.pool import Pool
 from tempfile import NamedTemporaryFile
 from statsmodels.stats.proportion import proportion_confint
 
-from Globals import TEAM_NAME, PARAMS
+from Globals import TEAM_NAME, PARAMS, FINAL_SCORE_HEADER, MLFLOW_RUN
 
 ## Experiment Settings
 # no. of game trials to run for the experiment
@@ -59,7 +59,7 @@ def run_trial(n_trail):
 
     # extract game score from game stdout
     out_lines = hal_run.stdout.decode("utf-8").splitlines()
-    match_lines = [l for l in out_lines if "final score" in l.lower()]
+    match_lines = [l for l in out_lines if FINAL_SCORE_HEADER in l]
     scores = [
         int(t) for t in match_lines[0].replace(":", "").split(" ") if str.isdigit(t)
     ]
@@ -70,8 +70,16 @@ def compute_statistics(scores):
     """
     Compute statistics from the given scores.
     """
-    team_red_wins = np.sum(np.argmax(scores, axis=-1))
-    team_blue_wins = N_TRIALS - team_red_wins
+    # tabulate wins for each team
+    team_red_wins, team_blue_wins = 0, 0
+    for score in scores:
+        team_blue_score, team_red_score = score
+        if team_red_score > team_blue_score:
+            team_red_wins += 1
+        elif team_blue_score > team_red_score:
+            team_blue_wins += 1
+        # draw does not count as a win for either team
+
     # compute the proportion/ratio of wins
     team_blue_win_ratio, team_red_win_ratio = (
         team_blue_wins / N_TRIALS,
@@ -164,14 +172,16 @@ def print_results(scores, stats, file=sys.stdout):
 if __name__ == "__main__":
     # log trial to MLFlow
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
-    with mlflow.start_run(), Pool(processes=min(os.cpu_count() * 4, N_TRIALS)) as pool:
+    with mlflow.start_run(run_name=MLFLOW_RUN), Pool(
+        processes=min(os.cpu_count() * 4, N_TRIALS)
+    ) as pool:
         # log trial parameters to Mlflow
         params = {
             **PARAMS,
             **{k.lower(): v for k, v in RUN_ENV_OVERRIDES.items()},
             **{
                 "n_trial": N_TRIALS,
-                "red_sig_better_nonzero_status": RED_SIG_BETTER_NONZERO_STATUS,
+                "red_signifcantly_better_nonzero_status": RED_SIG_BETTER_NONZERO_STATUS,
                 "confidence": CONFIDENCE,
             },
         }

@@ -37,7 +37,7 @@ jobs:
     name: "Recorded Playtest vs Easy AI"
     env:
       DIFFICULTY: "easy"
-      TEAM_NAME: "MasteMaster,EasyAI"
+      TEAM_NAME: "Master,EasyAI"
       LOGGER: "MLFlowLogger"
       CAMERA: "OpenCVCamera"
       MLFLOW_EXPERIMENT: "np-aig-records"
