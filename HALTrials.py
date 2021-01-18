@@ -14,8 +14,7 @@ from multiprocessing.pool import Pool
 from tempfile import NamedTemporaryFile
 from statsmodels.stats.proportion import proportion_confint
 
-from Globals import TEAM_NAME, PARAMS, FINAL_SCORE_HEADER
-from util import get_mlflow_run_name
+from Globals import TEAM_NAME, PARAMS, FINAL_SCORE_HEADER, MLFLOW_RUN
 
 ## Experiment Settings
 # no. of game trials to run for the experiment
@@ -165,7 +164,7 @@ def print_results(scores, stats, file=sys.stdout):
 if __name__ == "__main__":
     # log trial to MLFlow
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
-    with mlflow.start_run(run_name=get_mlflow_run_name()), Pool(
+    with mlflow.start_run(run_name=MLFLOW_RUN), Pool(
         processes=min(os.cpu_count() * 4, N_TRIALS)
     ) as pool:
         # log trial parameters to Mlflow

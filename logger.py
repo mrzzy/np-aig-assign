@@ -5,8 +5,7 @@
 
 import mlflow
 from abc import ABC, abstractmethod
-from Globals import TEAM_NAME, MLFLOW_EXPERIMENT
-from util import get_mlflow_run_name
+from Globals import TEAM_NAME, MLFLOW_EXPERIMENT, MLFLOW_RUN
 
 
 class Logger(ABC):
@@ -122,7 +121,7 @@ class MLFlowLogger(Logger):
         mlflow.set_experiment(MLFLOW_EXPERIMENT)
 
     def __enter__(self):
-        mlflow.start_run(run_name=get_mlflow_run_name())
+        mlflow.start_run(run_name=MLFLOW_RUN)
 
     def __exit__(self, exc_type, exc_value, traceback):
         mlflow.end_run()

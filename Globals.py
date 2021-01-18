@@ -1,4 +1,5 @@
 import os
+from git import Repo
 from distutils.util import strtobool
 
 
@@ -55,6 +56,13 @@ os.environ["MLFLOW_TRACKING_URI"] = os.environ.get(
 # NOPCamera - does not record anything
 # OpenCVCamera - records game frames and stiches them together into a MP4 video
 MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "np-aig-records")
+
+# the name of the MLFlow run to use when logging to mlflow with MLFlowLogger
+# defaults to the output of git describe
+repo = Repo(search_parent_directories=True)
+MLFLOW_RUN = str(
+    os.environ.get("MLFLOW_RUN", repo.git.describe("--all", "--long", "--dirty"))
+)
 
 # whether to return a non zero status if Team B/Red wins
 RED_WIN_NONZERO_STATUS = bool(
