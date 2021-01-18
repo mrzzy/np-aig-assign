@@ -24,6 +24,8 @@ jobs:
     name: "Lint HAL source code"
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
@@ -46,10 +48,13 @@ jobs:
       NPC_RED_SRCS: "master/Knight_TeamA.py,master/Archer_TeamA.py,master/Wizard_TeamA.py"
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - uses: actions/checkout@v2
         with:
           ref: "master"
           path: "master"
+          fetch-depth: 0
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
@@ -72,10 +77,13 @@ jobs:
       N_TRIALS: 41
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - uses: actions/checkout@v2
         with:
           ref: "master"
           path: "master"
+          fetch-depth: 0
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
