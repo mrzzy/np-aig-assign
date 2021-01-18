@@ -1,12 +1,25 @@
 # Since we cannot modify the world.py file, we can only create functions which
 # take in the world as argument and act on world's attributes
 
+from os import close
 import random
-from Globals import SCREEN_HEIGHT, SCREEN_WIDTH
-from typing import List
-
+import pygame
+from pygame import display
 from pygame import Vector2
+from Globals import SCREEN_HEIGHT, SCREEN_WIDTH
+from typing import Dict, List, Tuple
+
+from HAL import Obstacle
 from GameEntity import GameEntity
+
+# Obstacle Graphs
+mountain_2_path = []
+
+with open("mountain_2_path.txt", "r") as f:
+    for line in f:
+        # Read and create a vector from the line
+        vec = Vector2(*map(int, line.strip().split(",")))
+        mountain_2_path.append(vec)
 
 # Other Math functions
 def perpendicular_unit(vec: Vector2) -> Vector2:
@@ -21,8 +34,25 @@ def perpendicular_unit(vec: Vector2) -> Vector2:
     ).normalize()
 
 
-def dot_prod(vec1: Vector2, vec2: Vector2) -> Vector2:
-    return vec1.elementwise() * vec2
+def dot_prod(vec1: Vector2, vec2: Vector2) -> int:
+    return vec1[0]*vec2[0] + vec1[1]*vec2[1]
+
+
+def proj_vec(vec1: Vector2, vec2: Vector2) -> Vector2:
+    return dot_prod(vec1, vec2) * vec2.normalize()
+
+
+def unit_proj_vec(vec1: Vector2, vec2: Vector2) -> Vector2:
+    vec = proj_vec(vec1, vec2)
+    if vec.length() == 0:
+        return vec
+    return vec.normalize()
+
+
+def foot_of_perpendicular(pos: Vector2, line_start: Vector2, line_end: Vector2) -> Vector2:
+    # Project the position onto the line
+    foot_vec = proj_vec((pos - line_start), (line_end - line_start).normalize())
+    return line_start + foot_vec
 
 
 # Finding entities
@@ -95,6 +125,113 @@ def has_constant_direction(entity: GameEntity):
     return False
 
 
+def is_mountain_2(entity: GameEntity):
+    return entity.position == Vector2(620, 280)
+
+
+def find_closest_node(
+    path: List[Vector2],
+    position: Vector2,
+) -> Tuple[int, Vector2]:
+    closest_vec = None
+    closest_dist = None
+
+    for vec in path:
+        dist = position.distance_to(vec)
+
+        if closest_vec is None:
+            closest_vec = len(mountain_2_path) - 1
+            closest_dist = dist
+            continue
+
+        if dist < closest_dist:
+            closest_vec = len(mountain_2_path) - 1
+            closest_dist = dist
+
+    return (closest_vec, path[closest_vec])
+
+
+def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vector2]:
+    """Find the closest edge
+    Returns a dictionary:
+        {
+            "vec": edge vector,
+            "foot": foot of perpendicular location,
+            "distance": distance to foot of perpendicular
+        }"""
+    closest_node = find_closest_node(path, position)[0]
+
+    edge1_foot = foot_of_perpendicular(
+        position,
+        path[(closest_node + 1) % len(path)],
+        path[closest_node],
+    )
+    edge1_vec = path[(closest_node + 1) % len(path)] - \
+        path[closest_node]
+    d_to_edge1_foot = position.distance_to(edge1_foot)
+
+    edge2_foot = foot_of_perpendicular(
+        position,
+        path[closest_node-1],
+        path[closest_node],
+    )
+    edge2_vec = path[closest_node-1] - path[closest_node]
+    d_to_edge2_foot = position.distance_to(edge2_foot)
+
+    if d_to_edge1_foot < d_to_edge2_foot:
+        return {
+            "vec": edge1_vec,
+            "foot": edge1_foot,
+            "distance": d_to_edge1_foot,
+        }
+
+    return {
+        "vec": edge2_vec,
+        "foot": edge2_foot,
+        "distance": d_to_edge2_foot,
+    }
+
+def avoid_obstacle(
+    obstacle_path: List[Vector2],
+    avoider: GameEntity,
+    bias: Vector2
+):
+    MAX_DISTANCE = 30.0
+
+    # Decide on which edge to go towards
+    closest_edge = find_closest_edge(obstacle_path, avoider.position)
+
+    # Return the bias if it is not close to the entity
+    # There is no need to avoid the obstacle if the obstacle is not near
+    if closest_edge["distance"] < MAX_DISTANCE:
+        return bias
+
+    # Decide on which direction along the edge to go towards based on the bias
+    # e.g. clockwise or anti-clockwise
+    biased_dir = unit_proj_vec(bias, closest_edge["vec"])
+    if biased_dir.length() == 0:
+        return closest_edge["vec"]
+
+    # Move towards the path based on how far the entity is from path
+    # The further the entity is from the path, the more the bias is ignored
+    foot_bias_ratio = (MAX_DISTANCE - closest_edge["distance"]) / MAX_DISTANCE
+    vec = (avoider.position - closest_edge["foot"]).normalize() * foot_bias_ratio
+    vec += biased_dir.normalize() * (1 - foot_bias_ratio)
+    return vec
+
+
+def avoid_obstacles(avoider: GameEntity, bias: Vector2):
+    paths = [
+        mountain_2_path,
+    ]
+
+    final_vec = bias
+    for path in paths:
+        final_vec += avoid_obstacle(path, avoider, bias)
+
+    return final_vec
+
+
 # Avoiding entities
 def avoid_entities(avoider: GameEntity, entities: List[GameEntity]) -> Vector2:
     final_direction = Vector2(0, 0)
@@ -110,7 +247,7 @@ def avoid_entities(avoider: GameEntity, entities: List[GameEntity]) -> Vector2:
     # Run upwards or downwards if at the edge of the screen
     if avoider.position.x > (SCREEN_WIDTH - 10) \
             or avoider.position.x < 10:
-        final_direction = dot_prod(final_direction, Vector2(0, 1))
+        final_direction = unit_proj_vec(final_direction, Vector2(0, 1))
         # Enemy is directly on the right or left
         if final_direction.length() == 0:
             # Randomly pick to move up or down
@@ -118,7 +255,7 @@ def avoid_entities(avoider: GameEntity, entities: List[GameEntity]) -> Vector2:
 
     if avoider.position.y > (SCREEN_HEIGHT - 10) \
             or avoider.position.y < 10:
-        final_direction = dot_prod(final_direction, Vector2(1, 0))
+        final_direction = unit_proj_vec(final_direction, Vector2(0, 1))
         if final_direction.length() == 0:
             # Randomly pick to move up or down
             final_direction = random.choice([Vector2(1, 0), Vector2(-1, 0)])

@@ -1,7 +1,8 @@
 import pygame
 from pygame.math import *
 
-from random import randint, random
+from random import randint
+
 from Graph import *
 
 from Character import *
@@ -221,6 +222,9 @@ class WizardStateFleeing_TeamA(State):
 
         # Calculate the flee direction from all the threats
         final_direction = avoid_entities(self.wizard, immediate_threats)
+
+        # Move along the obstacle lines if near them
+        final_direction = avoid_obstacles(self.wizard, final_direction)
 
         # Flee
         self.wizard.velocity = final_direction
