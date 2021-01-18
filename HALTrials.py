@@ -171,7 +171,7 @@ if __name__ == "__main__":
             **{k.lower(): v for k, v in RUN_ENV_OVERRIDES.items()},
             **{
                 "n_trial": N_TRIALS,
-                "red_sig_better_nonzero_status": RED_SIG_BETTER_NONZERO_STATUS,
+                "red_signifcantly_better_nonzero_status": RED_SIG_BETTER_NONZERO_STATUS,
                 "confidence": CONFIDENCE,
             },
         }
