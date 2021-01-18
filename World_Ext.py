@@ -236,7 +236,9 @@ def avoid_obstacle(
 
 def avoid_obstacles(avoider: GameEntity, bias: Vector2):
     paths = [
+        load_path("mountain_1_path.txt"),
         load_path("mountain_2_path.txt"),
+        load_path("plateau_path.txt"),
     ]
 
     final_vec = bias
