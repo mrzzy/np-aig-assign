@@ -3,8 +3,6 @@
 
 from os import close
 import random
-import pygame
-from pygame import display
 from pygame import Vector2
 from Globals import SCREEN_HEIGHT, SCREEN_WIDTH
 from typing import Dict, List, Tuple
@@ -15,11 +13,27 @@ from GameEntity import GameEntity
 # Obstacle Graphs
 mountain_2_path = []
 
-with open("mountain_2_path.txt", "r") as f:
-    for line in f:
-        # Read and create a vector from the line
-        vec = Vector2(*map(int, line.strip().split(",")))
-        mountain_2_path.append(vec)
+def _load_path():
+    cache = {}
+    def load_path(filename):
+        # memoize the data returned
+        nonlocal cache
+        if filename in cache:
+            return cache[filename]
+
+        path = []
+        with open(filename, "r") as f:
+            for line in f:
+                # Read and create a vector from the line
+                vec = Vector2(*map(int, line.strip().split(",")))
+                path.append(vec)
+        cache[filename] = path
+        return path
+
+    return load_path
+
+load_path = _load_path()
+
 
 # Other Math functions
 def perpendicular_unit(vec: Vector2) -> Vector2:
@@ -222,7 +236,7 @@ def avoid_obstacle(
 
 def avoid_obstacles(avoider: GameEntity, bias: Vector2):
     paths = [
-        mountain_2_path,
+        load_path("mountain_2_path.txt"),
     ]
 
     final_vec = bias
