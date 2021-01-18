@@ -154,7 +154,11 @@ class WizardStateAttacking_TeamA(State):
 
                 # Hit all three things when possible
                 if self.wizard.target.name in {"tower", "base"}:
+                    # Right-side base
                     position = Vector2(881, 626)
+                    # Flip if the target base is the left-side base
+                    if self.wizard.target.position.x > 1024:
+                        position = Vector2(*SCREEN_SIZE) - position
 
                 self.wizard.ranged_attack(position, self.wizard.explosion_image)
 
