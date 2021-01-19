@@ -115,6 +115,23 @@ def line_of_slight(entity, target, step_dist=20, ray_size=(4, 4)):
     return True
 
 
+def get_attackers(entity):
+    """
+    Check if the given entity is being targeted and attacked.
+    Returns a list of attackers or a empty list if no one is attacking sorted
+         by distance to the given entity
+    """
+    world = entity.world
+    attackers = [
+        e
+        for e in world.entities.values()
+        if getattr(e, "target", None) is not None and e.target.id == entity.id
+    ]
+    return sorted(
+        attackers, key=(lambda attacker: (attacker.position - entity.position).length())
+    )
+
+
 class Archer_TeamA(Character):
     def __init__(self, world, image, projectile_image, base, position):
 
@@ -142,18 +159,14 @@ class Archer_TeamA(Character):
 
         self.brain.set_state("seeking")
 
+        self.time_passed = 1 / 30
+
     def render(self, surface):
         Character.render(self, surface)
 
-        if getattr(self, "correct_pos", None) is not None:
-            pygame.draw.circle(
-                surface,
-                (255, 0, 0),
-                (int(self.correct_pos[0]), int(self.correct_pos[1])),
-                int(4),
-            )
-
     def process(self, time_passed):
+        # record time passed for states to use.
+        self.time_passed = time_passed
 
         Character.process(self, time_passed)
 
@@ -182,7 +195,6 @@ class ArcherStateSeeking_TeamA(State):
         ]
 
     def do_actions(self):
-
         self.archer.velocity = self.archer.move_target.position - self.archer.position
         if self.archer.velocity.length() > 0:
             self.archer.velocity.normalize_ip()
@@ -193,15 +205,20 @@ class ArcherStateSeeking_TeamA(State):
             self.archer.heal()
 
     def check_conditions(self):
+        # check if being attacked
+        attackers = get_attackers(self.archer)
+        if len(attackers) > 0:
+            # fight back against nearest attacker
+            opponent = attackers[0]
+        else:
+            # fight nearest opponent
+            opponent = self.archer.world.get_nearest_opponent(self.archer)
 
         # check if opponent is in range
-        nearest_opponent = self.archer.world.get_nearest_opponent(self.archer)
-        if nearest_opponent is not None:
-            opponent_distance = (
-                self.archer.position - nearest_opponent.position
-            ).length()
+        if opponent is not None:
+            opponent_distance = (self.archer.position - opponent.position).length()
             if opponent_distance <= self.archer.min_target_distance:
-                self.archer.target = nearest_opponent
+                self.archer.target = opponent
                 return "combat"
 
         if (self.archer.position - self.archer.move_target.position).length() < 8:
@@ -249,38 +266,70 @@ class ArcherStateCombat_TeamA(State):
         self.correct_pos = None
 
     def do_actions(self):
+        # check if being attacked
+        attackers = get_attackers(self.archer)
+        if len(attackers) > 0:
+            # fight back against nearest attacker instead
+            self.archer.target = attackers[0]
 
-        target = self.archer.target
-        target_distance = (target.position - self.archer.position).length()
-        current_pos = self.archer.position
+        target, current_pos, time_passed = (
+            self.archer.target,
+            self.archer.position,
+            self.archer.time_passed,
+        )
+        # project the targets velocity by trying to infer where he is trying to move to.
+        projected_velocity = target.velocity
+        # only project velocity if he is actively moving
+        if target.velocity.length() > 0:
+            if getattr(target, "target", None) is not None:
+                projected_velocity = (
+                    target.target.position - target.position
+                ).normalize() * target.maxSpeed
+            elif getattr(target, "move_target", None) is not None:
+                projected_velocity = (
+                    target.move_target.position - target.position
+                ).normalize() * target.maxSpeed
+
+        # project the targets position using velocity and the time passed in the previous frame
+        projected_pos = Vector2(target.position + (projected_velocity * time_passed))
+        target_distance = (projected_pos - self.archer.position).length()
 
         # attack: attack target when within range
-        if target_distance <= self.archer.projectile_range:
-            if self.archer.current_ranged_cooldown <= 0:
-                attack_pos = target.position
-                # TODO(mrzzy) (shoot at moving target)
-                self.archer.ranged_attack(attack_pos)
+        if (
+            target_distance <= self.archer.projectile_range
+            and self.archer.current_ranged_cooldown <= 0
+        ):
+            # take in account arrow travel time when attacking
+            projected_travel_time = target_distance / self.archer.projectile_speed
+            attack_pos = Vector2(
+                projected_pos + (projected_velocity * projected_travel_time)
+            )
+            self.archer.projected_pos = attack_pos
+            # TODO: remove
+            self.archer.ranged_attack(attack_pos)
 
         # movement: correct movement when colliding to prevent getting stuck on walls
         collisions = detect_collisions(self.archer)
         if len(collisions) > 0:
             self.correct_pos = avoid_obstacle(self.archer, collisions, 70)
             self.archer.correct_pos = self.correct_pos
-        elif self.correct_pos is not None:
+
+        if self.correct_pos is not None:
             reached = seek(self.archer, self.correct_pos)
             if reached:
                 self.correct_pos = None
-        elif target_distance == self.archer.projectile_range:
+        combat_range = self.archer.projectile_range
+        if target_distance == combat_range:
             # target within range: stop to attack
             self.archer.velocity = Vector2(0, 0)
-        elif target_distance > self.archer.projectile_range:
+        elif target_distance > combat_range:
             # seek target if out of range
-            seek(self.archer, target.position)
-        elif target_distance < self.archer.projectile_range:
+            seek(self.archer, projected_pos)
+        elif target_distance < combat_range:
             # move to attack at safe distance
             # move towards nearest node that is also moving away from opponent
             away_node = get_away_node(
-                self.archer.path_graph, current_pos, target.position
+                self.archer.path_graph, current_pos, projected_pos
             )
             move_heading = (away_node.position - current_pos).normalize()
             move_magnitude = target_distance - self.archer.projectile_range
@@ -292,10 +341,14 @@ class ArcherStateCombat_TeamA(State):
         if (
             self.archer.world.get(self.archer.target.id) is None
             or self.archer.target.ko
+            # KO takes 1 frame to register
+            or self.archer.target.current_hp <= 0
             or not line_of_slight(
                 self.archer,
                 self.archer.target,
-                ray_size=self.archer.projectile_image.get_size(),
+                # use ray with slightly larger size than arrow projectile size
+                # this should reduce the chance of shooting a obstacle thru a corner
+                ray_size=(30, 30),
             )
         ):
             self.archer.target = None
