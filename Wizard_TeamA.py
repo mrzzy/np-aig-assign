@@ -198,21 +198,10 @@ class WizardStateFleeing_TeamA(State):
             self.wizard.heal()
 
         # Get all hostile entities within FLEE_RADIUS
-        hostile_entities = [
-            e
-            for e in self.wizard.world.entities.values()
-            if is_in_radius(e, self.wizard, FLEE_RADIUS) and is_hostile(e, self.wizard)
-        ]
-
         # Dodge immediate threats
-        immediate_threats = []
-        non_immediate_threats = []
-        for e in hostile_entities:
-            if is_immediate_threat(self.wizard, e):
-                immediate_threats.append(e)
-                continue
-            non_immediate_threats.append(e)
-
+        immediate_threats, non_immediate_threats = collect_threats(
+            self.wizard, FLEE_RADIUS
+        )
         # Set flee targets
         self.wizard.flee_targets = immediate_threats
 
