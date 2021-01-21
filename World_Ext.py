@@ -3,9 +3,9 @@
 
 from os import close
 import random
-from pygame import Vector2
+from pygame import Vector2, sprite, Surface
 from Globals import SCREEN_HEIGHT, SCREEN_WIDTH
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Callable
 
 from HAL import Obstacle
 from GameEntity import GameEntity
@@ -150,14 +150,23 @@ def has_constant_direction(entity: GameEntity):
 
 
 # Avoiding entities and obstacles
-def find_closest_node(
-    path: List[Vector2],
+def find_closest_point(
+    points: List[Vector2],
     position: Vector2,
+    predicate: Callable[[Vector2], bool] = (lambda x: True),
 ) -> Tuple[int, Vector2]:
+    """
+    Find the position of closest point in the given unordered points.
+    Optionally, specify a predicate that the node must satisfy.
+    Returns the index of and position of the closest point.
+    """
+    # apply predicate to select elligible nodes
+    points = list(filter(predicate, points))
+
     closest_vec = None
     closest_dist = None
 
-    for index, vec in enumerate(path):
+    for index, vec in enumerate(points):
         dist = position.distance_to(vec)
 
         if closest_vec is None:
@@ -169,7 +178,7 @@ def find_closest_node(
             closest_vec = index
             closest_dist = dist
 
-    return (closest_vec, path[closest_vec])
+    return (closest_vec, points[closest_vec])
 
 
 def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vector2]:
@@ -181,7 +190,7 @@ def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vecto
             "distance": distance to foot of perpendicular
         }
     """
-    closest_node = find_closest_node(path, position)[0]
+    closest_node = find_closest_point(path, position)[0]
 
     edge1_foot = foot_of_perpendicular(
         position,
@@ -317,3 +326,122 @@ def avoid_edges(position: Vector2, bias: Vector2):
         return final_direction
 
     return final_direction.normalize()
+
+
+def seek(entity: GameEntity, move_pos: Vector2, offset: int = 8) -> Vector2:
+    """
+    Calculate heading to move towards move_pos.
+    Stops moving when within offset radius to prevent bouncing around point.
+    TODO: Avoids edges of the world and obstacles
+    Returns heading the entity should move to or Vector2(0,0) if no movement is required.
+    """
+    disp = move_pos - entity.position
+    if disp.length() < offset:
+        # stop moving when within offset radius to prevent bouncing around move_pos
+        return Vector2(0, 0)
+    heading = disp.normalize()
+    # apply obstacle and edge avoidance
+    # heading = avoid_obstacles(entity, heading)
+    # heading = avoid_edges(entity.position, heading)
+
+    return heading * entity.maxSpeed
+
+
+def collect_threats(
+    entity: GameEntity, terror_radius: float
+) -> Tuple[List[GameEntity], List[GameEntity]]:
+    """
+    Collect all immediate and non immediate threats within terror radius
+    Returns a list of immediate and non immediate threats
+    """
+    hostile_entities = [
+        e
+        for e in entity.world.entities.values()
+        if is_in_radius(e, entity, terror_radius) and is_hostile(e, entity)
+    ]
+
+    immediate_threats = []
+    non_immediate_threats = []
+    for e in hostile_entities:
+        if is_immediate_threat(entity, e):
+            immediate_threats.append(e)
+            continue
+        non_immediate_threats.append(e)
+    return immediate_threats, non_immediate_threats
+
+
+def detect_collisions(entity):
+    """
+    Detect collisions with obstacles
+    Returns a list of pairs of obstacle object and the collision points.
+    """
+    # TODO(mrzzy): colllision filter to select what to collide against
+    collisions = []
+    for obstacle in entity.world.obstacles:
+        collide_rel = sprite.collide_mask(entity, obstacle)
+        if collide_rel is None:
+            # no collision: skip
+            continue
+
+        # compute collision point offset by entity rect top left pt.
+        collide_pt = Vector2(entity.rect.left, entity.rect.top) + Vector2(collide_rel)
+        # record collision
+        collisions.append((obstacle, collide_pt))
+    return collisions
+
+
+def line_of_slight(
+    entity: GameEntity, target: GameEntity, step_dist=20, ray_size=(4, 4)
+) -> bool:
+    """
+    Whether entity has line of sight on the given target
+    By shooting a virtual "ray of light" toward the target and checking for collisions
+    along the way at after traveling for each step_dist.
+    """
+    # TODO(mrzzy): line of of target filter and line of sight to positions.
+    # shoot a virtual "ray" towards the target
+    world = entity.world
+    ray = GameEntity(entity.world, "ray", Surface(ray_size))
+    # ray of light's collision mask should be filled.
+    ray.mask.fill()
+    ray.position = entity.position
+
+    while (target.position - ray.position).length() > 0:
+        # move step_dist step towards the target
+        disp = target.position - ray.position
+        heading = disp.normalize()
+        ray.position = ray.position + heading * min(step_dist, disp.length())
+        # call process() manually is not actually added to the game world
+        ray.process(time_passed=0)
+
+        # check for collisions along the way
+        collisions = detect_collisions(ray)
+        if len(collisions) > 0:
+            collided, collide_pt = collisions[0]
+            # check that we are not colliding with our target
+            if collided.id != target.id:
+                # no line of slight: ray collided
+                return False
+    return True
+
+
+def project_position(target: GameEntity, time_secs: float) -> Vector2:
+    """
+    Project the position of the target in time_secs from now.
+    """
+    # project the velocity of the target
+    projected_velocity = target.velocity
+    # only project velocity if he is actively moving
+    if target.velocity.length() > 0:
+        if getattr(target, "target", None) is not None:
+            projected_velocity = (
+                target.target.position - target.position
+            ).normalize() * target.maxSpeed
+        elif getattr(target, "move_target", None) is not None:
+            projected_velocity = (
+                target.move_target.position - target.position
+            ).normalize() * target.maxSpeed
+
+    # project the targets position using velocity and the time passed in the previous frame
+    projected_pos = Vector2(target.position + (projected_velocity * time_secs))
+    return projected_pos
