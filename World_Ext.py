@@ -150,14 +150,23 @@ def has_constant_direction(entity: GameEntity):
 
 
 # Avoiding entities and obstacles
-def find_closest_node(
-    path: List[Vector2],
+def find_closest_point(
+    points: List[Vector2],
     position: Vector2,
+    predicate: Callable[[Vector2], bool] = (lambda x: True),
 ) -> Tuple[int, Vector2]:
+    """
+    Find the position of closest point in the given unordered points.
+    Optionally, specify a predicate that the node must satisfy.
+    Returns the index of and position of the closest point.
+    """
+    # apply predicate to select elligible nodes
+    points = list(filter(predicate, points))
+
     closest_vec = None
     closest_dist = None
 
-    for index, vec in enumerate(path):
+    for index, vec in enumerate(points):
         dist = position.distance_to(vec)
 
         if closest_vec is None:
