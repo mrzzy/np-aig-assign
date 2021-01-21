@@ -423,3 +423,25 @@ def line_of_slight(
                 # no line of slight: ray collided
                 return False
     return True
+
+
+def project_position(target: GameEntity, time_secs: float) -> Vector2:
+    """
+    Project the position of the target in time_secs from now.
+    """
+    # project the velocity of the target
+    projected_velocity = target.velocity
+    # only project velocity if he is actively moving
+    if target.velocity.length() > 0:
+        if getattr(target, "target", None) is not None:
+            projected_velocity = (
+                target.target.position - target.position
+            ).normalize() * target.maxSpeed
+        elif getattr(target, "move_target", None) is not None:
+            projected_velocity = (
+                target.move_target.position - target.position
+            ).normalize() * target.maxSpeed
+
+    # project the targets position using velocity and the time passed in the previous frame
+    projected_pos = Vector2(target.position + (projected_velocity * time_secs))
+    return projected_pos

@@ -162,22 +162,9 @@ class ArcherStateCombat_TeamA(State):
             self.archer.position,
             self.archer.time_passed,
         )
-        # TODO(mrzzy): move  position project into its own function.
-        # project the opponents velocity by trying to infer where he is trying to move to.
-        projected_velocity = opponent.velocity
-        # only project velocity if he is actively moving
-        if opponent.velocity.length() > 0:
-            if getattr(opponent, "target", None) is not None:
-                projected_velocity = (
-                    opponent.target.position - opponent.position
-                ).normalize() * opponent.maxSpeed
-            elif getattr(opponent, "move_target", None) is not None:
-                projected_velocity = (
-                    opponent.move_target.position - opponent.position
-                ).normalize() * opponent.maxSpeed
-
-        # project the targets position using velocity and the time passed in the previous frame
-        projected_pos = Vector2(opponent.position + (projected_velocity * time_passed))
+        # project the opponents position in the next frame
+        # using a the time passsed of the previous frame as reference
+        projected_pos = project_position(opponent, time_passed)
         opponent_dist = (projected_pos - current_pos).length()
 
         # attack: attack opponent when within range
@@ -185,17 +172,16 @@ class ArcherStateCombat_TeamA(State):
             opponent_dist <= self.archer.projectile_range
             and self.archer.current_ranged_cooldown <= 0
         ):
-            # take in account arrow travel time when attacking
+            # project the position when the arrow should hit the opponent
+            # take into account arrow travel time
             projected_travel_time = opponent_dist / self.archer.projectile_speed
-            attack_pos = Vector2(
-                projected_pos + (projected_velocity * projected_travel_time)
-            )
+            attack_pos = project_position(opponent, time_passed + projected_travel_time)
             self.archer.ranged_attack(attack_pos)
 
         # movement: practice safe distancing by move to attack at safe distance.
         safe_dist = self.archer.projectile_range
         # +- safe_offset is considered safe distance
-        safe_offset = 8
+        safe_offset = 4
         if abs(opponent_dist - safe_dist) <= safe_offset:
             # opponent within range: stop to attack
             move_pos = current_pos
