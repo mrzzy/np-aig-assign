@@ -9,6 +9,7 @@ import mlflow
 import subprocess
 import numpy as np
 from tqdm import tqdm
+from random import randint
 from distutils.util import strtobool
 from multiprocessing.pool import Pool
 from tempfile import NamedTemporaryFile
@@ -40,12 +41,12 @@ RUN_ENV_OVERRIDES = {
 }
 
 
-def run_trial(n_trail):
+def run_trial(rng_seed):
     """
-    Run one trial of HAL and return result and scores of teams
+    Run one trial of HAL and return result and scores of teams using the given RNG seed
     """
-    # run game via subprocess as pygame does not handfe concurrency well
-    run_env = {**os.environ, **RUN_ENV_OVERRIDES}
+    # run game via subprocess as pygame does not handle concurrency well
+    run_env = {**os.environ, **RUN_ENV_OVERRIDES, "RANDOM_SEED": f"{rng_seed}"}
     hal_run = subprocess.run(
         [
             sys.executable,
@@ -117,7 +118,7 @@ def compute_statistics(scores):
     }
 
 
-def print_results(scores, stats, file=sys.stdout):
+def print_results(scores, stats, seeds, file=sys.stdout):
     """
     Print out the results as a human readable report.
     """
@@ -160,11 +161,14 @@ def print_results(scores, stats, file=sys.stdout):
         file=file,
     )
 
-    # print individual match resources
+    # print individual match with their configured RNG seeds
     print("=" * 80, file=file)
-    print(f"Results Report ({TEAM_NAME[0]} wins-{TEAM_NAME[1]} wins):", file=file)
-    for n_trial, score in zip(range(1, N_TRIALS + 1), scores):
-        print(f"Trial {n_trial}: {score[0]}-{score[1]}", file=file)
+    print(
+        f"Results Report ({TEAM_NAME[0]} wins-{TEAM_NAME[1]} wins [RNG Seed]):",
+        file=file,
+    )
+    for n_trial, score, seed in zip(range(1, N_TRIALS + 1), scores, seeds):
+        print(f"Trial {n_trial}: {score[0]}-{score[1]} [{seed}]", file=file)
     print("=" * 80, file=file)
     file.flush()
 
@@ -186,17 +190,19 @@ if __name__ == "__main__":
             },
         }
         mlflow.log_params(params)
-        # run game trial
-        scores = np.asarray(
-            list(tqdm(pool.imap(run_trial, range(1, N_TRIALS + 1)), total=N_TRIALS))
-        )
+        # run game trials each with randomly choosen seed
+        # since the seed has be be rendered by MLFlow using JS,
+        # make sure seed stays within JS's Number.MAX_SAFE_INTEGER
+        seeds = [randint(0, 2 ** 53) for _ in range(N_TRIALS)]
+        scores = list(tqdm(pool.imap(run_trial, seeds), total=N_TRIALS))
 
-        for i_trial, score in zip(range(N_TRIALS), scores):
+        for i_trial, score, seed in zip(range(N_TRIALS), scores, seeds):
             # log scores for each trial
             mlflow.log_metrics(
                 metrics={
                     f"team_{TEAM_NAME[0]}_score": score[0],
                     f"team_{TEAM_NAME[1]}_score": score[1],
+                    "rng_seed": seed,
                 },
                 step=i_trial,
             )
@@ -223,9 +229,9 @@ if __name__ == "__main__":
         )
 
         # print results report
-        print_results(scores, stats)
+        print_results(scores, stats, seeds)
         with NamedTemporaryFile("w", prefix="results_report_", suffix=".txt") as f:
-            print_results(scores, stats, file=f)
+            print_results(scores, stats, seeds, file=f)
             mlflow.log_artifact(f.name)
 
     # exit nonzero status if red team is significantly better and configured to do so

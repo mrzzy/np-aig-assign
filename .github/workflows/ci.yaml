@@ -82,7 +82,7 @@ jobs:
       TEAM_NAME: "Master,EasyAI"
       MLFLOW_EXPERIMENT: "np-aig-trials"
       RED_SIG_BETTER_NONZERO_STATUS: "True"
-      N_TRIALS: 41
+      N_TRIALS: 81
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -103,7 +103,7 @@ jobs:
       TEAM_NAME: "Master,HardAI"
       MLFLOW_EXPERIMENT: "np-aig-trials"
       RED_SIG_BETTER_NONZERO_STATUS: "True"
-      N_TRIALS: 41
+      N_TRIALS: 81
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
