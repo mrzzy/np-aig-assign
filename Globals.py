@@ -1,5 +1,7 @@
 import os
+import sys
 from git import Repo
+from random import randint
 from distutils.util import strtobool
 
 
@@ -31,6 +33,10 @@ KNIGHT_RED_SRC, ARCHER_RED_SRC, WIZARD_RED_SRC = NPC_RED_SRCS
 # whether to run the game in real time.
 # if False, will skip the wait time between frames, running the game at faster pace
 REAL_TIME = bool(strtobool(os.environ.get("REAL_TIME", default="True")))
+
+# the seed to use to seed the RNG before running the gam
+# this should allow the game run to be reproduced by ensuring the commit hash and RNG seed.
+RANDOM_SEED = int(os.environ.get("RANDOM_SEED", default=randint(0, sys.maxsize)))
 
 # whether to run the game in headless mode
 # if True:
@@ -169,4 +175,5 @@ PARAMS = {
     "camera": CAMERA,
     # assume team red is opponent
     "opponent": TEAM_NAME[-1],
+    "rng_seed": RANDOM_SEED,
 }
