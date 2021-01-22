@@ -191,7 +191,9 @@ if __name__ == "__main__":
         }
         mlflow.log_params(params)
         # run game trials each with randomly choosen seed
-        seeds = [randint(0, sys.maxsize) for _ in range(N_TRIALS)]
+        # since the seed has be be rendered by MLFlow using JS,
+        # make sure seed stays within JS's Number.MAX_SAFE_INTEGER
+        seeds = [randint(0, 2 ** 53) for _ in range(N_TRIALS)]
         scores = list(tqdm(pool.imap(run_trial, seeds), total=N_TRIALS))
 
         for i_trial, score, seed in zip(range(N_TRIALS), scores, seeds):

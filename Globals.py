@@ -1,5 +1,4 @@
 import os
-import sys
 from git import Repo
 from random import randint
 from distutils.util import strtobool
@@ -36,7 +35,9 @@ REAL_TIME = bool(strtobool(os.environ.get("REAL_TIME", default="True")))
 
 # the seed to use to seed the RNG before running the gam
 # this should allow the game run to be reproduced by ensuring the commit hash and RNG seed.
-RANDOM_SEED = int(os.environ.get("RANDOM_SEED", default=randint(0, sys.maxsize)))
+# since the seed has be be rendered by MLFlow using JS, 
+# make sure seed stays within JS's Number.MAX_SAFE_INTEGER
+RANDOM_SEED = int(os.environ.get("RANDOM_SEED", default=randint(0, 2 ** 53)))
 
 # whether to run the game in headless mode
 # if True:
