@@ -74,7 +74,7 @@ jobs:
       MLFLOW_EXPERIMENT: "np-aig-trials"
       RED_SIG_BETTER_NONZERO_STATUS: "True"
       NPC_RED_SRCS: "master/Knight_TeamA.py,master/Archer_TeamA.py,master/Wizard_TeamA.py"
-      N_TRIALS: 41
+      N_TRIALS: 51
     steps:
       - uses: actions/checkout@v2
         with:
