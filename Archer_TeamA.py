@@ -18,7 +18,11 @@ def get_attackers(entity):
     attackers = [
         e
         for e in world.entities.values()
-        if getattr(e, "target", None) is not None and e.target.id == entity.id
+        if (
+            getattr(e, "target", None) is not None
+            and e.target.id == entity.id
+            and (e.position - entity.position).length() < ARCHER_MIN_TARGET_DISTANCE
+        )
     ]
     return sorted(
         attackers, key=(lambda attacker: (attacker.position - entity.position).length())
@@ -44,10 +48,12 @@ class Archer_TeamA(Character):
 
         seeking_state = ArcherStateSeeking_TeamA(self)
         combat_state = ArcherStateCombat_TeamA(self)
+        searching_state = ArcherStateSearching_TeamA(self)
         ko_state = ArcherStateKO_TeamA(self)
 
         self.brain.add_state(seeking_state)
         self.brain.add_state(combat_state)
+        self.brain.add_state(searching_state)
         self.brain.add_state(ko_state)
 
         self.brain.set_state("seeking")
@@ -95,8 +101,10 @@ class ArcherStateSeeking_TeamA(State):
 
     def check_conditions(self):
         # check if being attacked
+        # TODO (mrzzy): replace with collect_threats()
         attackers = get_attackers(self.archer)
         if len(attackers) > 0:
+            # TODO(mrzzy): fight back against most threatening attackeer
             # fight back against nearest attacker
             opponent = attackers[0]
         else:
@@ -144,6 +152,10 @@ class ArcherStateSeeking_TeamA(State):
 
 
 class ArcherStateCombat_TeamA(State):
+    """
+    Archer is engaging its target in combat.
+    """
+
     def __init__(self, archer):
 
         State.__init__(self, "combat")
@@ -152,6 +164,7 @@ class ArcherStateCombat_TeamA(State):
 
     def do_actions(self):
         # check if being attacked
+        # TODO (mrzzy): replace with collect_threats()
         attackers = get_attackers(self.archer)
         if len(attackers) > 0:
             # fight back against nearest attacker instead
@@ -199,22 +212,18 @@ class ArcherStateCombat_TeamA(State):
         self.archer.velocity = seek(self.archer, self.archer.move_target.position)
 
     def check_conditions(self):
-        # target is gone/lost line of sight
+        # target has KOed or exited min target distance
         if (
-            self.archer.world.get(self.archer.target.id) is None
-            or self.archer.target.ko
-            # KO takes 1 frame to register
-            or self.archer.target.current_hp <= 0
-            or not line_of_slight(
-                self.archer,
-                self.archer.target,
-                # use ray with slightly larger size than arrow projectile size
-                # this should reduce the chance of shooting a obstacle thru a corner
-                ray_size=(30, 30),
-            )
+            is_target_ko(self.archer)
+            or (self.archer.target.position - self.archer.position).length()
+            > ARCHER_MIN_TARGET_DISTANCE
         ):
             self.archer.target = None
             return "seeking"
+
+        # lost line of sight: search for target
+        if not line_of_slight(self.archer, self.archer.target, ray_size=(30, 30)):
+            return "searching"
 
         return None
 
@@ -222,6 +231,56 @@ class ArcherStateCombat_TeamA(State):
         # compile a list of unordered position/points of each node in the path graph
         self.path_pts = [n.position for n in self.archer.path_graph.nodes.values()]
         return None
+
+
+class ArcherStateSearching_TeamA(State):
+    """
+    Archer is searching for its target
+    """
+
+    def __init__(self, archer):
+        State.__init__(self, "searching")
+        self.archer = archer
+
+    def do_actions(self):
+        # move to search the target's position, navigating the graph as required.
+        current_pos, opponent, world, graph, time_passed = (
+            self.archer.position,
+            self.archer.target,
+            self.archer.world,
+            self.archer.world.graph,
+            self.archer.time_passed,
+        )
+        projected_pos = project_position(opponent, time_passed)
+        nearest_node = graph.get_nearest_node(current_pos)
+        search_node = graph.get_nearest_node(projected_pos)
+        if nearest_node.id != search_node.id:
+            # use a-star to find route to target when multi node traversal is required
+            connections = pathFindAStar(
+                graph,
+                nearest_node,
+                search_node,
+            )
+            move_pos = connections[0].toNode.position
+        else:
+            move_pos = search_node.position
+        self.archer.velocity = seek(self.archer, move_pos)
+
+    def check_conditions(self):
+        # target has KOed or exceeded max target distance
+        if (
+            is_target_ko(self.archer)
+            or (self.archer.target.position - self.archer.position).length()
+            > ARCHER_MIN_TARGET_DISTANCE
+        ):
+            self.archer.target = None
+            return "seeking"
+        # regain line of sight: return to combat mode
+        if line_of_slight(self.archer, self.archer.target, ray_size=(30, 30)):
+            return "combat"
+
+
+# TODO(mrzzy): add fleeing state
 
 
 class ArcherStateKO_TeamA(State):
