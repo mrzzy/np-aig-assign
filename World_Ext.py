@@ -88,13 +88,13 @@ def clamp_to_line_seg(point: Vector2, seg_start: Vector2, seg_end: Vector2):
     line_vec = seg_end - seg_start
     if line_vec.x == 0:
         # The line segment is vertical, so the x values should match
-        assert(point.x == seg_start.x)
+        assert point.x == seg_start.x
         lambda_constant = (point.y - seg_start.y) / line_vec.y
     else:
         lambda_constant = (point.x - seg_start.x) / line_vec.x
         expected_y = seg_start.y + lambda_constant * line_vec.y
         # Allow for 0.01 margin for rounding errors
-        assert(abs(point.y - expected_y) < 0.01)
+        assert abs(point.y - expected_y) < 0.01
 
     # The point is outside the line segment if lambda is not in [0, 1]
     if lambda_constant > 1:
@@ -108,9 +108,7 @@ def clamp_to_line_seg(point: Vector2, seg_start: Vector2, seg_end: Vector2):
         return point
 
 
-def foot_on_line(
-    pos: Vector2, seg_start: Vector2, seg_end: Vector2
-) -> Vector2:
+def foot_on_line(pos: Vector2, seg_start: Vector2, seg_end: Vector2) -> Vector2:
     """Calculates the foot of perpendicular on the line segment"""
     foot = foot_of_perpendicular(pos, seg_start, seg_end)
     return clamp_to_line_seg(foot, seg_start, seg_end)
