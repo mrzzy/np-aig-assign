@@ -86,10 +86,15 @@ def clamp_to_line_seg(point: Vector2, seg_start: Vector2, seg_end: Vector2):
     # y1 = seg_start_y + lambda * line_vec
     # where line_vec is a vector on the line
     line_vec = seg_end - seg_start
-    lambda_constant = (point.x - seg_start.x) / line_vec.x
-    expected_y = seg_start.y + lambda_constant * line_vec.y
-    # Allow for 0.01 margin for rounding errors
-    assert(abs(point.y - expected_y) < 0.01)
+    if line_vec.x == 0:
+        # The line segment is vertical, so the x values should match
+        assert(point.x == seg_start.x)
+        lambda_constant = (point.y - seg_start.y) / line_vec.y
+    else:
+        lambda_constant = (point.x - seg_start.x) / line_vec.x
+        expected_y = seg_start.y + lambda_constant * line_vec.y
+        # Allow for 0.01 margin for rounding errors
+        assert(abs(point.y - expected_y) < 0.01)
 
     # The point is outside the line segment if lambda is not in [0, 1]
     if lambda_constant > 1:
