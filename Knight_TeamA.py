@@ -146,6 +146,24 @@ class KnightStateFleeing_TeamA(State):
 
     def check_conditions(self):
 
+        if self.knight.target != None:
+
+            # if target targetting chara and chara can kill without dying
+            if self.knight.target.target and self.knight.target.target.id == self.knight.id:
+
+                enemies = enemies_targetting(self.knight, self.knight.world)
+
+                if (
+                    time_to_death(self.knight, enemies) > 
+                    time_to_kill(self.knight, self.knight.target, "melee")
+                ):
+                    return "attacking"
+            else:
+
+                self.knight.target = None
+                return "seeking"
+
+        # if knight hp >= 85%
         if self.knight.current_hp >= self.knight.max_hp * 0.85:
             return "seeking"
         
@@ -168,6 +186,7 @@ class KnightStateFleeing_TeamA(State):
 
 
     def entry_actions(self):
+
         self.getNewPath()
 
     def getNewPath(self):
@@ -223,7 +242,18 @@ class KnightStateAttacking_TeamA(State):
             return "seeking"
 
         if self.knight.current_hp <= self.knight.max_hp * 0.3:
-            self.knight.target = None
+
+            enemies = enemies_targetting(self.knight, self.knight.world)
+
+            # if character can kill first 
+            # or enemies no longer targetting character
+            if (
+                len(enemies) < 1  or
+                time_to_death(self.knight, enemies) > 
+                time_to_kill(self.knight, self.knight.target, "melee")
+            ):
+                return None
+
             return "fleeing"
             
         return None
@@ -264,3 +294,99 @@ class KnightStateKO_TeamA(State):
         self.knight.target = None
 
         return None
+
+# get numbre of enemies targetting character
+def enemies_targetting(chara, world):
+
+    enemies = []
+
+    for entity in world.entities.values():
+
+        # neutral entity
+        if entity.team_id == 2:
+            continue
+
+        # same team
+        if entity.team_id == chara.team_id:
+            continue
+
+        if entity.name == "projectile" or entity.name == "explosion":
+            continue
+
+        if entity.ko:
+            continue
+
+        # check enemy target
+        if entity.target:
+            if entity.target.id == chara.id:
+                enemies.append(entity)
+
+    return enemies
+
+# calculate how long it'll take for enemy to kill
+def time_to_death(chara, enemies):
+
+    if len(enemies) < 1:
+        return None
+
+    # put enemy attacks, cooldown in separate list
+    attack_pts = []
+    cooldown = []
+    original_cooldown = []
+
+    num_enemies = len(enemies)
+    total_damage = 0
+    time = 0
+
+    for enemy in enemies:
+        if enemy.name == "archer" or enemy.name == "wizard":
+            cooldown.append(enemy.ranged_cooldown)
+            original_cooldown.append(enemy.ranged_cooldown)
+            attack_pts.append(enemy.ranged_damage)
+
+        else:
+            cooldown.append(enemy.melee_cooldown)
+            original_cooldown.append(enemy.melee_cooldown)
+            attack_pts.append(enemy.melee_damage)
+
+    # while loop for each second
+    while True:
+
+        # calculate damage done each second
+        for i in range(0, num_enemies):
+
+            # -- check cooldown
+            if cooldown[i] <= 0:
+                # -- if cooldown ended, add damage
+                total_damage += attack_pts[i]
+                # -- reset cooldown
+                cooldown[i] = original_cooldown[i] + cooldown[i]
+
+            else:
+                cooldown[i] -= 1
+
+        if total_damage >= chara.current_hp:
+            return time
+
+        # increment time
+        time += 1
+
+
+
+# calculate how long it'll take for character to kill
+def time_to_kill(chara, enemy, attack_type):
+
+    attack_speed = 0
+    attack_pts = 0
+
+    # projectile or melee
+    if attack_type == "ranged":
+        attack_speed = chara.ranged_cooldown
+        attack_pts = chara.ranged_damage
+
+    else:
+        attack_speed = chara.melee_cooldown
+        attack_pts = chara.melee_damage
+
+    return enemy.current_hp / (attack_pts) * attack_speed
+
