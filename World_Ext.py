@@ -382,8 +382,8 @@ def seek(entity: GameEntity, move_pos: Vector2, offset: int = 8) -> Vector2:
         return Vector2(0, 0)
     heading = disp.normalize()
     # apply obstacle and edge avoidance
-    # heading = avoid_obstacles(entity, heading)
-    # heading = avoid_edges(entity.position, heading)
+    heading = avoid_obstacles(entity, heading)
+    heading = avoid_edges(entity.position, heading)
 
     return heading * entity.maxSpeed
 
