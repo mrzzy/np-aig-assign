@@ -5,11 +5,26 @@ from os import close
 import random
 from pygame import Vector2, sprite, Surface
 from Globals import SCREEN_HEIGHT, SCREEN_WIDTH
-from typing import Dict, List, Tuple, Callable
+from typing import Dict, List, Tuple, Callable, Union, Iterable, Optional
 
 from HAL import Obstacle
 from GameEntity import GameEntity
-from Graph import Connection
+from Graph import Connection, Node, Graph, pathFindAStar
+
+
+def distance(
+    v1: Union[Vector2, Tuple[float, float]], v2: Union[Vector2, Tuple[float, float]]
+) -> float:
+    """
+    Calculate the distance betweenf v1 and v2
+    """
+    # cast to  vector2 if requriedfa
+    if not isinstance(v1, Vector2):
+        v1 = Vector2(v1)
+    if not isinstance(v2, Vector2):
+        v2 = Vector2(v2)
+    return (v2 - v1).length()
+
 
 # Obstacle Graphs
 mountain_2_path = []
@@ -222,6 +237,17 @@ def find_closest_point(
     return (closest_vec, points[closest_vec])
 
 
+def find_closest_node(
+    graph: Node, position: Vector2, predicate: Callable[[Node], bool] = (lambda n: True)
+) -> Node:
+    """
+    Find the closest node in the given graph to the given position
+    that also statisfies the given predicate.
+    """
+    nodes = filter(predicate, graph.nodes.values())
+    return min(nodes, key=(lambda n: distance(n.position, position)))
+
+
 def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vector2]:
     """Find the closest edge
     Returns a dictionary:
@@ -381,9 +407,8 @@ def seek(entity: GameEntity, move_pos: Vector2, offset: int = 8) -> Vector2:
         # stop moving when within offset radius to prevent bouncing around move_pos
         return Vector2(0, 0)
     heading = disp.normalize()
-    # apply obstacle and edge avoidance
+    # apply obstacle avoidance
     heading = avoid_obstacles(entity, heading)
-    heading = avoid_edges(entity.position, heading)
 
     return heading * entity.maxSpeed
 
@@ -414,14 +439,20 @@ def collect_threats(
 # TODO(mrzzy): threat analysis: how threatening is it.
 
 
-def detect_collisions(entity):
+def detect_collisions(entity: GameEntity, collide_with: Iterable[str], any_one=False):
     """
-    Detect collisions with obstacles
+    Detect collisions with the entities with the given names in collide_with.
+    If any_one is true, returns only the first collision detected
     Returns a list of pairs of obstacle object and the collision points.
     """
-    # TODO(mrzzy): colllision filter to select what to collide against
+    collide_names = frozenset(collide_with)
+    # filter to entities to collide with specified by collide_with
+    collide_entities = [
+        e for e in entity.world.entities.values() if e.name in collide_names
+    ]
+
     collisions = []
-    for obstacle in entity.world.obstacles:
+    for obstacle in collide_entities:
         collide_rel = sprite.collide_mask(entity, obstacle)
         if collide_rel is None:
             # no collision: skip
@@ -431,18 +462,24 @@ def detect_collisions(entity):
         collide_pt = Vector2(entity.rect.left, entity.rect.top) + Vector2(collide_rel)
         # record collision
         collisions.append((obstacle, collide_pt))
+        # return first collision detected
+        if any_one:
+            return [collisions[0]]
     return collisions
 
 
 def line_of_slight(
-    entity: GameEntity, target: GameEntity, step_dist=20, ray_size=(4, 4)
+    entity: GameEntity,
+    target: Union[GameEntity, Node],
+    step_dist=10,
+    ray_size=(15, 15),
+    collide_with: Iterable[str] = {"obstacle"},
 ) -> bool:
     """
-    Whether entity has line of sight on the given target
+    Whether entity has line of sight on the given target.
     By shooting a virtual "ray of light" toward the target and checking for collisions
-    along the way at after traveling for each step_dist.
+    along the way with entities of collide_with names at after traveling for each step_dist.
     """
-    # TODO(mrzzy): line of of target filter and line of sight to positions.
     # shoot a virtual "ray" towards the target
     world = entity.world
     ray = GameEntity(entity.world, "ray", Surface(ray_size))
@@ -450,7 +487,7 @@ def line_of_slight(
     ray.mask.fill()
     ray.position = entity.position
 
-    while (target.position - ray.position).length() > 0:
+    while distance(target.position, ray.position) > 0:
         # move step_dist step towards the target
         disp = target.position - ray.position
         heading = disp.normalize()
@@ -459,7 +496,7 @@ def line_of_slight(
         ray.process(time_passed=0)
 
         # check for collisions along the way
-        collisions = detect_collisions(ray)
+        collisions = detect_collisions(ray, collide_with, any_one=True)
         if len(collisions) > 0:
             collided, collide_pt = collisions[0]
             # check that we are not colliding with our target
@@ -536,3 +573,67 @@ def iterpolate_path(path: List[Connection], interval_dist: float = 8) -> List[Ve
         prev_node_pos = next_node_pos
 
     return pts
+
+
+def get_visible_node(
+    graph: Graph, entity: GameEntity, search_radius: float = 150
+) -> Node:
+    """
+    Get the closest visible node on the graph with respect to the given entity's position
+    """
+    # filter out non-visible nodes
+    return find_closest_node(
+        graph=graph,
+        position=entity.position,
+        predicate=(lambda n: line_of_slight(entity, n)),
+    )
+
+
+def route_dist(
+    graph: Graph,
+    e1: GameEntity,
+    e2: GameEntity,
+) -> float:
+    """
+    Calculate the distance between e1 and e2 routed through the given graph using astar
+    """
+    e1_node, e2_node = get_visible_node(graph, e1), get_visible_node(graph, e2)
+    path = pathFindAStar(
+        graph,
+        e1_node,
+        e2_node,
+    )
+    path_dist = sum([c.cost for c in path])
+    return (
+        distance(e1.position, e1_node.position)
+        + path_dist
+        + distance(e2_node.position, e2.position)
+    )
+
+
+def find_closest_opponent(
+    graph: Graph, entity: GameEntity, terror_radius: float = None
+) -> Optional[GameEntity]:
+    """
+    Finds the closest opponent based on within line of sight
+    """
+    # default terror_radius to entity's min_target_distance if unsef
+    if terror_radius is None:
+        terror_radius = entity.min_target_distance
+    # filter game entities into opponents
+    world = entity.world
+    opponents = [
+        e
+        for e in world.entities.values()
+        if (
+            e.team_id != 2
+            and e.team_id != entity.team_id
+            and not (e.name == "projectile" or e.name == "explosion")
+            and not e.ko
+            and distance(entity.position, e.position) <= terror_radius
+            and line_of_slight(entity, e)
+        )
+    ]
+    if len(opponents) <= 0:
+        return None
+    return min(opponents, key=(lambda o: distance(entity.position, o.position)))

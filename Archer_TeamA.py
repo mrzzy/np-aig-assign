@@ -70,8 +70,9 @@ class Archer_TeamA(Character):
         Character.process(self, time_passed)
 
         level_up_stats_weighted = [
-            ("ranged cooldown", 0.7),
-            ("healing cooldown", 0.3),
+            ("ranged cooldown", 0.6),
+            ("projectile range", 0.3),
+            ("healing cooldown", 0.1),
         ]
         if self.can_level_up():
             upgrade_stat = random_choices(
@@ -80,6 +81,8 @@ class Archer_TeamA(Character):
                 k=1,
             )[0]
             self.level_up(upgrade_stat)
+            if upgrade_stat == "projectile range":
+                self.min_target_distance = self.projectile_range
 
 
 class ArcherStateSeeking_TeamA(State):
@@ -104,12 +107,14 @@ class ArcherStateSeeking_TeamA(State):
         # TODO (mrzzy): replace with collect_threats()
         attackers = get_attackers(self.archer)
         if len(attackers) > 0:
-            # TODO(mrzzy): fight back against most threatening attackeer
+            # TODO(mrzzy): fight back against most threatening attacker
             # fight back against nearest attacker
             opponent = attackers[0]
         else:
             # fight nearest opponent
-            opponent = self.archer.world.get_nearest_opponent(self.archer)
+            opponent = find_closest_opponent(
+                graph=self.archer.world.graph, entity=self.archer
+            )
 
         # check if opponent is in range
         if opponent is not None:
@@ -130,8 +135,7 @@ class ArcherStateSeeking_TeamA(State):
         return None
 
     def entry_actions(self):
-
-        nearest_node = self.archer.path_graph.get_nearest_node(self.archer.position)
+        nearest_node = get_visible_node(self.archer.path_graph, self.archer)
 
         self.path = pathFindAStar(
             self.archer.path_graph,
@@ -202,7 +206,7 @@ class ArcherStateCombat_TeamA(State):
             # seek opponent if out of ranged
             move_pos = projected_pos
         elif opponent_dist < safe_dist:
-            # move towards nearest point in path that is also moving away from opponent
+            # move retreat to attack at a safe distance.
             _, move_pos = find_closest_point(
                 points=self.path_pts,
                 position=current_pos,
@@ -212,16 +216,12 @@ class ArcherStateCombat_TeamA(State):
         self.archer.velocity = seek(self.archer, self.archer.move_target.position)
 
     def check_conditions(self):
-        # target has KOed or exited min target distance
-        if (
-            is_target_ko(self.archer)
-            or (self.archer.target.position - self.archer.position).length()
-            > ARCHER_MIN_TARGET_DISTANCE
-        ):
+        # target has KOed
+        if is_target_ko(self.archer):
             self.archer.target = None
             return "seeking"
 
-        # lost line of sight: search for target
+        # lost line of sight: search for target or out of range
         if not line_of_slight(self.archer, self.archer.target, ray_size=(30, 30)):
             return "searching"
 
@@ -241,6 +241,7 @@ class ArcherStateSearching_TeamA(State):
     def __init__(self, archer):
         State.__init__(self, "searching")
         self.archer = archer
+        self.search_offset = 150
 
     def do_actions(self):
         # move to search the target's position, navigating the graph as required.
@@ -251,9 +252,8 @@ class ArcherStateSearching_TeamA(State):
             self.archer.world.graph,
             self.archer.time_passed,
         )
-        projected_pos = project_position(opponent, time_passed)
-        nearest_node = graph.get_nearest_node(current_pos)
-        search_node = graph.get_nearest_node(projected_pos)
+        nearest_node = get_visible_node(graph, self.archer)
+        search_node = get_visible_node(graph, opponent)
         if nearest_node.id != search_node.id:
             # use a-star to find route to target when multi node traversal is required
             connections = pathFindAStar(
@@ -267,14 +267,17 @@ class ArcherStateSearching_TeamA(State):
         self.archer.velocity = seek(self.archer, move_pos)
 
     def check_conditions(self):
-        # target has KOed or exceeded max target distance
-        if (
-            is_target_ko(self.archer)
-            or (self.archer.target.position - self.archer.position).length()
-            > ARCHER_MIN_TARGET_DISTANCE
-        ):
+        # target has KOed
+        if is_target_ko(self.archer):
             self.archer.target = None
             return "seeking"
+        # route to target is too far
+        graph, opponent = self.archer.world.graph, self.archer.target
+        if route_dist(graph, self.archer, opponent) > (
+            self.archer.min_target_distance + self.search_offset
+        ):
+            return "seeking"
+
         # regain line of sight: return to combat mode
         if line_of_slight(self.archer, self.archer.target, ray_size=(30, 30)):
             return "combat"
