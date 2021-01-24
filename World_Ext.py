@@ -56,7 +56,7 @@ def dot_prod(vec1: Vector2, vec2: Vector2) -> int:
 
 
 def proj_vec(vec1: Vector2, vec2: Vector2) -> Vector2:
-    return dot_prod(vec1, vec2) * vec2.normalize()
+    return dot_prod(vec1, vec2.normalize()) * vec2.normalize()
 
 
 def unit_proj_vec(vec1: Vector2, vec2: Vector2) -> Vector2:
@@ -70,8 +70,48 @@ def foot_of_perpendicular(
     pos: Vector2, line_start: Vector2, line_end: Vector2
 ) -> Vector2:
     # Project the position onto the line
-    foot_vec = proj_vec((pos - line_start), (line_end - line_start).normalize())
+    foot_vec = proj_vec((pos - line_start), (line_end - line_start))
     return line_start + foot_vec
+
+
+def clamp_to_line_seg(point: Vector2, seg_start: Vector2, seg_end: Vector2):
+    """Forces a `point` to be within a line segment.
+    If the point is beyond the ends of the line segment, return the closest end
+    If the point is not even on a line described by both points, throw an error
+    Otherwise, return the point that is on the line segment.
+    """
+    # Test if point is on the line (ignoring bounds of line segment)
+    # If the point is on the line, it must be solvable by:
+    # x1 = seg_start_x + lambda * line_vec
+    # y1 = seg_start_y + lambda * line_vec
+    # where line_vec is a vector on the line
+    line_vec = seg_end - seg_start
+    if line_vec.x == 0:
+        # The line segment is vertical, so the x values should match
+        assert point.x == seg_start.x
+        lambda_constant = (point.y - seg_start.y) / line_vec.y
+    else:
+        lambda_constant = (point.x - seg_start.x) / line_vec.x
+        expected_y = seg_start.y + lambda_constant * line_vec.y
+        # Allow for 0.01 margin for rounding errors
+        assert abs(point.y - expected_y) < 0.01
+
+    # The point is outside the line segment if lambda is not in [0, 1]
+    if lambda_constant > 1:
+        # Point is beyond seg_end
+        return seg_end
+    elif lambda_constant < 0:
+        # Point is before seg_start
+        return seg_start
+    else:
+        # Point is on the line
+        return point
+
+
+def foot_on_line(pos: Vector2, seg_start: Vector2, seg_end: Vector2) -> Vector2:
+    """Calculates the foot of perpendicular on the line segment"""
+    foot = foot_of_perpendicular(pos, seg_start, seg_end)
+    return clamp_to_line_seg(foot, seg_start, seg_end)
 
 
 def rotate_right(vec: Vector2) -> Vector2:
@@ -192,7 +232,7 @@ def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vecto
     """
     closest_node = find_closest_point(path, position)[0]
 
-    edge1_foot = foot_of_perpendicular(
+    edge1_foot = foot_on_line(
         position,
         path[(closest_node + 1) % len(path)],
         path[closest_node],
@@ -200,7 +240,7 @@ def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vecto
     edge1_vec = path[(closest_node + 1) % len(path)] - path[closest_node]
     d_to_edge1_foot = position.distance_to(edge1_foot)
 
-    edge2_foot = foot_of_perpendicular(
+    edge2_foot = foot_on_line(
         position,
         path[closest_node - 1],
         path[closest_node],
