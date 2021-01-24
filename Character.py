@@ -184,14 +184,14 @@ class Character(GameEntity):
                 self.level_up_message = None
 
         # --- If DEBUG is on, shows min_target_distance and target ---
-        if DEBUG:
-            pygame.draw.circle(
-                surface,
-                (0, 0, 0),
-                (int(self.position[0]), int(self.position[1])),
-                int(self.min_target_distance),
-                int(2),
-            )
+        if DEBUG and self.name == "archer" and self.team_id == 0:
+            # pygame.draw.circle(
+            #    surface,
+            #    (0, 0, 0),
+            #    (int(self.position[0]), int(self.position[1])),
+            #    int(self.min_target_distance),
+            #    int(2),
+            # )
 
             font = pygame.font.SysFont("arial", 12, True)
             state_name = font.render(

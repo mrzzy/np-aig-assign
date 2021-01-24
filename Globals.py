@@ -1,4 +1,6 @@
 import os
+from git import Repo
+from random import randint
 from distutils.util import strtobool
 
 
@@ -31,6 +33,12 @@ KNIGHT_RED_SRC, ARCHER_RED_SRC, WIZARD_RED_SRC = NPC_RED_SRCS
 # if False, will skip the wait time between frames, running the game at faster pace
 REAL_TIME = bool(strtobool(os.environ.get("REAL_TIME", default="True")))
 
+# the seed to use to seed the RNG before running the gam
+# this should allow the game run to be reproduced by ensuring the commit hash and RNG seed.
+# since the seed has be be rendered by MLFlow using JS,
+# make sure seed stays within JS's Number.MAX_SAFE_INTEGER
+RANDOM_SEED = int(os.environ.get("RANDOM_SEED", default=randint(0, 2 ** 53)))
+
 # whether to run the game in headless mode
 # if True:
 # - configures PyGame to use a dummy video driver that does not create a window.
@@ -55,6 +63,12 @@ os.environ["MLFLOW_TRACKING_URI"] = os.environ.get(
 # NOPCamera - does not record anything
 # OpenCVCamera - records game frames and stiches them together into a MP4 video
 MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT", "np-aig-records")
+
+# the name of the MLFlow run to use when logging to mlflow with MLFlowLogger
+# defaults to the first line of the last git commit message.
+repo = Repo(search_parent_directories=True)
+get_title = lambda c: c.message.splitlines()[0]
+MLFLOW_RUN = str(os.environ.get("MLFLOW_RUN", get_title(repo.head.commit)))
 
 # whether to return a non zero status if Team B/Red wins
 RED_WIN_NONZERO_STATUS = bool(
@@ -144,6 +158,8 @@ UP_PERCENTAGE_PROJECTILE_RANGE = 10
 UP_PERCENTAGE_HEALING = 20
 UP_PERCENTAGE_HEALING_COOLDOWN = 10
 
+FINAL_SCORE_HEADER = "Final Score:"
+
 PARAMS = {
     "debug": DEBUG,
     "show_paths": SHOW_PATHS,
@@ -160,4 +176,5 @@ PARAMS = {
     "camera": CAMERA,
     # assume team red is opponent
     "opponent": TEAM_NAME[-1],
+    "rng_seed": RANDOM_SEED,
 }

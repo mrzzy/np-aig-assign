@@ -3,7 +3,7 @@ import sys
 import pygame
 from pygame.locals import *
 
-from random import randint, random
+from random import randint, random, seed
 from math import *
 from importlib.util import spec_from_file_location, module_from_spec
 from pygame.math import *
@@ -347,6 +347,9 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
     Uses the given logger to collect game parameters and metrics
     and the given camera to record game frames.
     """
+    # prime the RNG with seed
+    seed(RANDOM_SEED)
+    print(f"Using RNG seed: {RANDOM_SEED}")
 
     # log game parameters
     with log:
@@ -679,7 +682,7 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
 
         print("Game has ended")
         print(
-            "Final Score:",
+            FINAL_SCORE_HEADER,
             " ".join(
                 f"{team}: {score}" for team, score in zip(TEAM_NAME, world.scores)
             ),
