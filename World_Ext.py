@@ -1,11 +1,12 @@
 # Since we cannot modify the world.py file, we can only create functions which
 # take in the world as argument and act on world's attributes
 
-from os import close
 import random
+from os import close
 from pygame import Vector2, sprite, Surface
 from Globals import SCREEN_HEIGHT, SCREEN_WIDTH
 from typing import Dict, List, Tuple, Callable, Union, Iterable, Optional
+from enum import Enum
 
 from HAL import Obstacle
 from GameEntity import GameEntity
@@ -18,7 +19,7 @@ def distance(
     """
     Calculate the distance betweenf v1 and v2
     """
-    # cast to  vector2 if requriedfa
+    # cast to  vector2 if requried
     if not isinstance(v1, Vector2):
         v1 = Vector2(v1)
     if not isinstance(v2, Vector2):
@@ -239,13 +240,13 @@ def find_closest_point(
 
 def find_closest_node(
     graph: Node, position: Vector2, predicate: Callable[[Node], bool] = (lambda n: True)
-) -> Node:
+) -> Optional[Node]:
     """
     Find the closest node in the given graph to the given position
     that also statisfies the given predicate.
     """
     nodes = filter(predicate, graph.nodes.values())
-    return min(nodes, key=(lambda n: distance(n.position, position)))
+    return min(nodes, default=None, key=(lambda n: distance(n.position, position)))
 
 
 def find_closest_edge(path: List[Vector2], position: Vector2) -> Dict[str, Vector2]:
@@ -399,7 +400,6 @@ def seek(entity: GameEntity, move_pos: Vector2, offset: int = 8) -> Vector2:
     """
     Calculate heading to move towards move_pos.
     Stops moving when within offset radius to prevent bouncing around point.
-    TODO: Avoids edges of the world and obstacles
     Returns heading the entity should move to or Vector2(0,0) if no movement is required.
     """
     disp = move_pos - entity.position
@@ -472,7 +472,7 @@ def line_of_slight(
     entity: GameEntity,
     target: Union[GameEntity, Node],
     step_dist=10,
-    ray_size=(15, 15),
+    ray_width=20,
     collide_with: Iterable[str] = {"obstacle"},
 ) -> bool:
     """
@@ -482,7 +482,7 @@ def line_of_slight(
     """
     # shoot a virtual "ray" towards the target
     world = entity.world
-    ray = GameEntity(entity.world, "ray", Surface(ray_size))
+    ray = GameEntity(entity.world, "ray", Surface((step_dist, ray_width)))
     # ray of light's collision mask should be filled.
     ray.mask.fill()
     ray.position = entity.position
@@ -547,72 +547,77 @@ def is_target_ko(entity: GameEntity) -> bool:
     )
 
 
-# TODO: convert this to interpolate graph
-def iterpolate_path(path: List[Connection], interval_dist: float = 8) -> List[Vector2]:
+def interpolate_graph(graph: Graph, interval_dist: float = 20) -> Graph:
     """
-    Interpolate the given path into a list of points each placed at every interval_dist interval.
-    Following the points one by one should be the same as following the path.
+    Linearly Interpolate the connections in the given graph, inserting nodes every interval_dist.
     """
-    if len(path) == 0:
-        return []
+    interp_graph = Graph(graph.world)
+    interp_graph.nodes = dict(graph.nodes)
+    new_node_id = max([node_id for node_id in graph.nodes]) + 1
 
-    prev_node_pos = Vector2(path[0].fromNode.position)
-    pts = [prev_node_pos]
-    for connection in path:
+    for connection in graph.connections:
         # calculate no. of intervals to next node
-        next_node_pos = Vector2(connection.toNode.position)
-        node_dist = (next_node_pos - prev_node_pos).length()
+        start_node, end_node = connection.fromNode, connection.toNode
+        start_pos, end_pos = Vector2(start_node.position), Vector2(end_node.position)
+        node_dist = distance(start_pos, end_pos)
         n_intervals = int(node_dist // interval_dist)
 
         # add interval points between prev and next nnodes
-        for i_interval in range(n_intervals):
-            interval_pos = prev_node_pos.lerp(next_node_pos, i_interval / n_intervals)
-            pts.append(interval_pos)
+        prev_node = start_node
+        # interpolation exclusive of both start and end pos
+        for i_interval in range(1, n_intervals):
+            interp_pos = start_pos.lerp(end_pos, i_interval / n_intervals)
 
-        pts.append(next_node_pos)
-        prev_node_pos = next_node_pos
+            # create interpolated node
+            interp_node = Node(
+                interp_graph, new_node_id, int(interp_pos[0]), int(interp_pos[1])
+            )
+            new_node_id += 1
+            interp_graph.nodes[new_node_id] = interp_node
 
-    return pts
+            # create connection to interpolated node
+            interp_graph.addConnection(
+                prev_node,
+                interp_node,
+                distance(prev_node.position, interp_node.position),
+            )
+            prev_node = interp_node
+        # create connection to end node
+        interp_graph.addConnection(
+            prev_node, end_node, distance(prev_node.position, interp_node.position)
+        )
 
-
-def get_visible_node(
-    graph: Graph, entity: GameEntity, search_radius: float = 150
-) -> Node:
-    """
-    Get the closest visible node on the graph with respect to the given entity's position
-    """
-    # filter out non-visible nodes
-    return find_closest_node(
-        graph=graph,
-        position=entity.position,
-        predicate=(lambda n: line_of_slight(entity, n)),
-    )
+    return interp_graph
 
 
 def route_dist(
     graph: Graph,
-    e1: GameEntity,
-    e2: GameEntity,
+    v1: Union[Vector2, Tuple[float, float]],
+    v2: Union[Vector2, Tuple[float, float]],
 ) -> float:
     """
-    Calculate the distance between e1 and e2 routed through the given graph using astar
+    Calculate the distance between v1 and v2 routed through the given graph using astar
     """
-    e1_node, e2_node = get_visible_node(graph, e1), get_visible_node(graph, e2)
+    # cast to  vector2 if requried
+    if not isinstance(v1, Vector2):
+        v1 = Vector2(v1)
+    if not isinstance(v2, Vector2):
+        v2 = Vector2(v2)
+
+    v1_node, v2_node = graph.get_nearest_node(v1), graph.get_nearest_node(v2)
     path = pathFindAStar(
         graph,
-        e1_node,
-        e2_node,
+        v1_node,
+        v2_node,
     )
     path_dist = sum([c.cost for c in path])
-    return (
-        distance(e1.position, e1_node.position)
-        + path_dist
-        + distance(e2_node.position, e2.position)
-    )
+    return distance(v1, v1_node.position) + path_dist + distance(v2_node.position, v2)
 
 
 def find_closest_opponent(
-    graph: Graph, entity: GameEntity, terror_radius: float = None
+    graph: Graph,
+    entity: GameEntity,
+    terror_radius: float = None,
 ) -> Optional[GameEntity]:
     """
     Finds the closest opponent based on within line of sight
@@ -634,6 +639,6 @@ def find_closest_opponent(
             and line_of_slight(entity, e)
         )
     ]
-    if len(opponents) <= 0:
-        return None
-    return min(opponents, key=(lambda o: distance(entity.position, o.position)))
+    return min(
+        opponents, default=None, key=(lambda o: distance(entity.position, o.position))
+    )

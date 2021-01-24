@@ -1,6 +1,6 @@
 import pygame
 from pygame import Vector2, Surface
-from random import randint, random, choices as random_choices
+from random import randint, random, choices as random_choices, choice as random_choice
 from Graph import *
 
 from Character import *
@@ -8,6 +8,7 @@ from State import *
 from World_Ext import *
 
 
+# TODO(mrzzy): replace this
 def get_attackers(entity):
     """
     Check if the given entity is being targeted and attacked.
@@ -21,7 +22,7 @@ def get_attackers(entity):
         if (
             getattr(e, "target", None) is not None
             and e.target.id == entity.id
-            and (e.position - entity.position).length() < ARCHER_MIN_TARGET_DISTANCE
+            and (e.position - entity.position).length() < entity.min_target_distance
         )
     ]
     return sorted(
@@ -35,6 +36,7 @@ class Archer_TeamA(Character):
         Character.__init__(self, world, "archer", image)
 
         self.projectile_image = projectile_image
+        self.projectile_size = projectile_image.get_rect().size
 
         self.base = base
         self.position = position
@@ -45,6 +47,16 @@ class Archer_TeamA(Character):
         self.min_target_distance = 100
         self.projectile_range = 100
         self.projectile_speed = 100
+
+        self.graph = interpolate_graph(self.world.graph)
+        # choose a random starting node, ultimately deciding the path taken
+        starting_nodes = [
+            c.toNode
+            for c in self.graph.getConnections(
+                self.graph.nodes[self.base.spawn_node_index]
+            )
+        ]
+        self.starting_node = random_choice(starting_nodes)
 
         seeking_state = ArcherStateSeeking_TeamA(self)
         combat_state = ArcherStateCombat_TeamA(self)
@@ -91,10 +103,6 @@ class ArcherStateSeeking_TeamA(State):
         State.__init__(self, "seeking")
         self.archer = archer
 
-        self.archer.path_graph = self.archer.world.paths[
-            randint(0, len(self.archer.world.paths) - 1)
-        ]
-
     def do_actions(self):
         self.archer.velocity = seek(self.archer, self.archer.move_target.position)
 
@@ -113,7 +121,7 @@ class ArcherStateSeeking_TeamA(State):
         else:
             # fight nearest opponent
             opponent = find_closest_opponent(
-                graph=self.archer.world.graph, entity=self.archer
+                graph=self.archer.graph, entity=self.archer
             )
 
         # check if opponent is in range
@@ -135,12 +143,19 @@ class ArcherStateSeeking_TeamA(State):
         return None
 
     def entry_actions(self):
-        nearest_node = get_visible_node(self.archer.path_graph, self.archer)
+        # TODO(mrzzy): replace path graph with graph + starting position.
+        base = self.archer.base
+        if distance(self.archer.position, base.spawn_position) <= 0:
+            # just spawned: navigating via starting node
+            start_node = self.archer.starting_node
+        else:
+            # continue navigating to enemy base via nearest node
+            start_node = self.archer.graph.get_nearest_node(self.archer.position)
 
         self.path = pathFindAStar(
-            self.archer.path_graph,
-            nearest_node,
-            self.archer.path_graph.nodes[self.archer.base.target_node_index],
+            self.archer.graph,
+            start_node,
+            self.archer.graph.nodes[base.target_node_index],
         )
 
         self.path_length = len(self.path)
@@ -150,8 +165,8 @@ class ArcherStateSeeking_TeamA(State):
             self.archer.move_target.position = self.path[0].fromNode.position
 
         else:
-            self.archer.move_target.position = self.archer.path_graph.nodes[
-                self.archer.base.target_node_index
+            self.archer.move_target.position = self.archer.graph.nodes[
+                base.target_node_index
             ].position
 
 
@@ -222,14 +237,16 @@ class ArcherStateCombat_TeamA(State):
             return "seeking"
 
         # lost line of sight: search for target or out of range
-        if not line_of_slight(self.archer, self.archer.target, ray_size=(30, 30)):
+        if not line_of_slight(
+            self.archer, self.archer.target, ray_width=self.archer.projectile_size[1]
+        ):
             return "searching"
 
         return None
 
     def entry_actions(self):
-        # compile a list of unordered position/points of each node in the path graph
-        self.path_pts = [n.position for n in self.archer.path_graph.nodes.values()]
+        # compile a list of unordered position/points of each node in the graph
+        self.path_pts = [n.position for n in self.archer.graph.nodes.values()]
         return None
 
 
@@ -244,16 +261,17 @@ class ArcherStateSearching_TeamA(State):
         self.search_offset = 150
 
     def do_actions(self):
+        # TODO(mrzzy): patch up on health when searching?
         # move to search the target's position, navigating the graph as required.
         current_pos, opponent, world, graph, time_passed = (
             self.archer.position,
             self.archer.target,
             self.archer.world,
-            self.archer.world.graph,
+            self.archer.graph,
             self.archer.time_passed,
         )
-        nearest_node = get_visible_node(graph, self.archer)
-        search_node = get_visible_node(graph, opponent)
+        nearest_node = graph.get_nearest_node(self.archer.position)
+        search_node = graph.get_nearest_node(opponent.position)
         if nearest_node.id != search_node.id:
             # use a-star to find route to target when multi node traversal is required
             connections = pathFindAStar(
@@ -272,14 +290,19 @@ class ArcherStateSearching_TeamA(State):
             self.archer.target = None
             return "seeking"
         # route to target is too far
-        graph, opponent = self.archer.world.graph, self.archer.target
-        if route_dist(graph, self.archer, opponent) > (
+        graph, opponent = self.archer.graph, self.archer.target
+        if route_dist(graph, self.archer.position, opponent.position) > (
             self.archer.min_target_distance + self.search_offset
         ):
             return "seeking"
 
         # regain line of sight: return to combat mode
-        if line_of_slight(self.archer, self.archer.target, ray_size=(30, 30)):
+        if line_of_slight(
+            self.archer,
+            self.archer.target,
+            step_dist=10,
+            ray_width=self.archer.projectile_size[1],
+        ):
             return "combat"
 
 
@@ -293,7 +316,6 @@ class ArcherStateKO_TeamA(State):
         self.archer = archer
 
     def do_actions(self):
-
         return None
 
     def check_conditions(self):
