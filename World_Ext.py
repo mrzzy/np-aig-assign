@@ -9,6 +9,7 @@ from typing import Dict, List, Tuple, Callable
 
 from HAL import Obstacle
 from GameEntity import GameEntity
+from Graph import Connection
 
 # Obstacle Graphs
 mountain_2_path = []
@@ -410,6 +411,9 @@ def collect_threats(
     return immediate_threats, non_immediate_threats
 
 
+# TODO(mrzzy): threat analysis: how threatening is it.
+
+
 def detect_collisions(entity):
     """
     Detect collisions with obstacles
@@ -492,3 +496,43 @@ def project_position(target: GameEntity, time_secs: float) -> Vector2:
     # project the targets position using velocity and the time passed in the previous frame
     projected_pos = Vector2(target.position + (projected_velocity * time_secs))
     return projected_pos
+
+
+def is_target_ko(entity: GameEntity) -> bool:
+    """
+    Returns True if its safe to assume the target is KO, false otherwise
+    """
+    return (
+        entity.world.get(entity.target.id) is None
+        or entity.target.ko
+        # KO takes 1 frame to register
+        or entity.target.current_hp <= 0
+    )
+
+
+# TODO: convert this to interpolate graph
+def iterpolate_path(path: List[Connection], interval_dist: float = 8) -> List[Vector2]:
+    """
+    Interpolate the given path into a list of points each placed at every interval_dist interval.
+    Following the points one by one should be the same as following the path.
+    """
+    if len(path) == 0:
+        return []
+
+    prev_node_pos = Vector2(path[0].fromNode.position)
+    pts = [prev_node_pos]
+    for connection in path:
+        # calculate no. of intervals to next node
+        next_node_pos = Vector2(connection.toNode.position)
+        node_dist = (next_node_pos - prev_node_pos).length()
+        n_intervals = int(node_dist // interval_dist)
+
+        # add interval points between prev and next nnodes
+        for i_interval in range(n_intervals):
+            interval_pos = prev_node_pos.lerp(next_node_pos, i_interval / n_intervals)
+            pts.append(interval_pos)
+
+        pts.append(next_node_pos)
+        prev_node_pos = next_node_pos
+
+    return pts
