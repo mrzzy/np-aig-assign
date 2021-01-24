@@ -1,8 +1,9 @@
 import os
 import sys
 import pygame
-from pygame.locals import *
 
+from pathlib import Path
+from pygame.locals import *
 from random import randint, random, seed
 from math import *
 from importlib.util import spec_from_file_location, module_from_spec
@@ -27,13 +28,24 @@ def import_npc(path):
     """
     Imports the Game AI the python source at path
     """
-    # add module dir to system path to allow imports to work
-    sys.path.insert(0, os.path.dirname(path))
+    # add dir to system path to allow imports to work
+    old_path = sys.path[:]
+    import_path = str((Path(".") / os.path.dirname(path)).absolute())
+    sys.path.insert(0, import_path)
+
+    # remove world ext module to allow python to resolve the correct world ext module
+    old_modules = dict(sys.modules)
+    if "World_Ext" in sys.modules:
+        del sys.modules["World_Ext"]
+
     # import module from source at path
     mod_spec = spec_from_file_location("module", path)
     mod = module_from_spec(mod_spec)
     mod_spec.loader.exec_module(mod)
-    sys.path.pop(0)
+
+    # return sys path and modules
+    sys.path = old_path
+    sys.modules = old_modules
 
     # unpack npc class from module
     matching_names = [
@@ -46,15 +58,6 @@ def import_npc(path):
     npc_class = mod.__dict__[matching_names[0]]
 
     return npc_class
-
-
-Knight_TeamA = import_npc(KNIGHT_BLUE_SRC)
-Archer_TeamA = import_npc(ARCHER_BLUE_SRC)
-Wizard_TeamA = import_npc(WIZARD_BLUE_SRC)
-
-Knight_TeamB = import_npc(KNIGHT_RED_SRC)
-Archer_TeamB = import_npc(ARCHER_RED_SRC)
-Wizard_TeamB = import_npc(WIZARD_RED_SRC)
 
 
 class World(object):
@@ -408,6 +411,14 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
         plateau_image = pygame.image.load("assets/plateau.png").convert_alpha()
 
         # --- Initialize Blue buildings and units ---
+        Knight_TeamA = import_npc(KNIGHT_BLUE_SRC)
+        Archer_TeamA = import_npc(ARCHER_BLUE_SRC)
+        Wizard_TeamA = import_npc(WIZARD_BLUE_SRC)
+
+        Knight_TeamB = import_npc(KNIGHT_RED_SRC)
+        Archer_TeamB = import_npc(ARCHER_RED_SRC)
+        Wizard_TeamB = import_npc(WIZARD_RED_SRC)
+
         blue_base = Base(world, blue_base_image, blue_orc_image, blue_rock_image, 0, 4)
         blue_base.position = Vector2(68, 68)
         blue_base.team_id = 0
