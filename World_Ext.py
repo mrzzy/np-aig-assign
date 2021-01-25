@@ -189,7 +189,7 @@ def remove_outliers(positions: List[Vector2]) -> List[Vector2]:
         sorted_pos = sorted(positions, key=lambda x: x.y)
 
     # Return the interquartile values
-    return sorted_pos[len(positions)//4:(3*len(positions)//4)]
+    return sorted_pos[len(positions) // 4 : (3 * len(positions) // 4)]
 
 
 # Finding entities
@@ -757,8 +757,9 @@ def find_ideal_projectile_target(
 
     # Apparently when the shooting at the current position, the game crashes
     # because of how ranged_attack is implemented
-    if round(final_vec.x) == round(proj_start_pos.x) and \
-            round(final_vec.y) == round(proj_start_pos.y):
+    if round(final_vec.x) == round(proj_start_pos.x) and round(final_vec.y) == round(
+        proj_start_pos.y
+    ):
         final_vec.x += 1
 
     return final_vec

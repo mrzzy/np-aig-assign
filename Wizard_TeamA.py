@@ -19,6 +19,7 @@ ATTACK_CONSIDER_RADIUS = 220 + 48
 SWEET_SPOT_BLUE = Vector2(881, 626)
 SWEET_SPOT_RED = Vector2(*SCREEN_SIZE) - Vector2(881, 626)
 
+
 class Wizard_TeamA(Character):
     def __init__(
         self, world, image, projectile_image, base, position, explosion_image=None
@@ -166,9 +167,7 @@ class WizardStateAttacking_TeamA(State):
         target_positions = []
         for target in self.wizard.targets:
             pos = find_ideal_projectile_target(
-                target,
-                self.wizard.position,
-                self.wizard.projectile_speed
+                target, self.wizard.position, self.wizard.projectile_speed
             )
             target_positions.append(pos)
             if target.name in {"tower", "base"}:
@@ -185,16 +184,15 @@ class WizardStateAttacking_TeamA(State):
 
             if (
                 target_positions[0] == self.sweet_spot
-                and distance(self.wizard.position, self.sweet_spot) >
-                    self.wizard.projectile_range
+                and distance(self.wizard.position, self.sweet_spot)
+                > self.wizard.projectile_range
             ):
                 # Move towards the sweet spot
                 final_direction = self.sweet_spot - self.wizard.position
                 final_direction = avoid_obstacles(self.wizard, final_direction)
 
                 # Glide along edges
-                final_direction = avoid_edges(
-                    self.wizard.position, final_direction)
+                final_direction = avoid_edges(self.wizard.position, final_direction)
 
                 self.wizard.velocity = final_direction
 
