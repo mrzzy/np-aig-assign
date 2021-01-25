@@ -51,21 +51,24 @@ class Archer_TeamA(Character):
         self.graph = interpolate_graph(self.world.graph)
         # choose a random starting node, ultimately deciding the path taken
         starting_nodes = [
-            c.toNode
-            for c in self.graph.getConnections(
-                self.graph.nodes[self.base.spawn_node_index]
-            )
+            self.world.graph.nodes[2],
+            self.world.graph.nodes[5],
+            self.world.graph.nodes[9],
+            self.world.graph.nodes[12],
         ]
         self.starting_node = random_choice(starting_nodes)
+        print(self.starting_node.position)
 
         seeking_state = ArcherStateSeeking_TeamA(self)
         combat_state = ArcherStateCombat_TeamA(self)
         searching_state = ArcherStateSearching_TeamA(self)
+        fleeing_state = ArcherStateFleeing_TeamA(self)
         ko_state = ArcherStateKO_TeamA(self)
 
         self.brain.add_state(seeking_state)
         self.brain.add_state(combat_state)
         self.brain.add_state(searching_state)
+        self.brain.add_state(fleeing_state)
         self.brain.add_state(ko_state)
 
         self.brain.set_state("seeking")
@@ -83,7 +86,8 @@ class Archer_TeamA(Character):
 
         level_up_stats_weighted = [
             ("ranged cooldown", 0.6),
-            ("projectile range", 0.2),
+            ("projectile range", 0.1),
+            ("heal cooldown", 0.1),
             ("speed", 0.2),
         ]
         if self.can_level_up():
@@ -130,6 +134,11 @@ class ArcherStateSeeking_TeamA(State):
             self.archer.heal()
 
     def check_conditions(self):
+        if (
+            self.archer.current_hp / self.archer.max_hp
+        ) < ArcherStateFleeing_TeamA.hp_threshold:
+            return "fleeing"
+
         opponent = self.opponent
         if opponent is not None:
             self.archer.target = opponent
@@ -236,6 +245,11 @@ class ArcherStateCombat_TeamA(State):
         self.archer.velocity = seek(self.archer, self.archer.move_target.position)
 
     def check_conditions(self):
+        if (
+            self.archer.current_hp / self.archer.max_hp
+        ) < ArcherStateFleeing_TeamA.hp_threshold:
+            return "fleeing"
+
         # target has KOed
         if is_target_ko(self.archer):
             self.archer.target = None
@@ -263,8 +277,8 @@ class ArcherStateSearching_TeamA(State):
     def __init__(self, archer):
         State.__init__(self, "searching")
         self.archer = archer
-        self.search_offset = 150
-        self.heal_threshold = 0.70
+        self.search_offset = 125
+        self.heal_threshold = 0.75
         self.regain_sight_threshold = 1.4
 
     def do_actions(self):
@@ -315,7 +329,37 @@ class ArcherStateSearching_TeamA(State):
             return "combat"
 
 
-# TODO(mrzzy): add fleeing state
+class ArcherStateFleeing_TeamA(State):
+    # start fleeing before one hit from wizard hit can kill
+    hp_threshold = 0.30
+
+    def __init__(self, archer):
+        State.__init__(self, "fleeing")
+        self.archer = archer
+        self.flee_radius = 100
+        self.exit_hp_threshold = 0.75
+
+    def do_actions(self):
+        # Try and heal
+        if self.archer.current_hp != self.archer.max_hp:
+            self.archer.heal()
+
+        # Dodge immediate threats
+        immediate_threats, non_immediate_threats = collect_threats(
+            self.archer, self.flee_radius
+        )
+
+        # Calculate the flee direction from all the threats
+        final_direction = avoid_entities(self.archer, immediate_threats)
+        if not immediate_threats:
+            final_direction = avoid_entities(self.archer, non_immediate_threats)
+
+        move_pos = final_direction * self.archer.maxSpeed
+        self.archer.velocity = seek(self.archer, move_pos)
+
+    def check_conditions(self):
+        if (self.archer.current_hp / self.archer.max_hp) >= self.exit_hp_threshold:
+            return "seeking"
 
 
 class ArcherStateKO_TeamA(State):
