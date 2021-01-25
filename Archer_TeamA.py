@@ -201,17 +201,19 @@ class ArcherStateCombat_TeamA(State):
         # using a the time passsed of the previous frame as reference
         projected_pos = project_position(opponent, time_passed)
         opponent_dist = (projected_pos - current_pos).length()
+        # TODO: remove
+        self.archer.projected_pos = projected_pos
 
         # attack: attack opponent when within range
         if (
             opponent_dist <= self.archer.projectile_range
             and self.archer.current_ranged_cooldown <= 0
         ):
-            # project the position when the arrow should hit the opponent
-            # take into account arrow travel time
             projected_travel_time = opponent_dist / self.archer.projectile_speed
             attack_pos = project_position(opponent, time_passed + projected_travel_time)
             self.archer.ranged_attack(attack_pos)
+            # TODO: remove
+            self.archer.attack_pos = attack_pos
 
         # movement: practice safe distancing by move to attack at safe distance.
         safe_dist = self.archer.projectile_range
@@ -262,7 +264,8 @@ class ArcherStateSearching_TeamA(State):
         State.__init__(self, "searching")
         self.archer = archer
         self.search_offset = 150
-        self.heal_threshold = 0.75
+        self.heal_threshold = 0.70
+        self.regain_sight_threshold = 1.4
 
     def do_actions(self):
         # patch up on health when searching
@@ -307,8 +310,7 @@ class ArcherStateSearching_TeamA(State):
         if line_of_slight(
             self.archer,
             self.archer.target,
-            step_dist=10,
-            ray_width=self.archer.projectile_size[1],
+            ray_width=self.archer.projectile_size[1] * self.regain_sight_threshold,
         ):
             return "combat"
 
