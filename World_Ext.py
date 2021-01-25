@@ -642,3 +642,33 @@ def find_closest_opponent(
     return min(
         opponents, default=None, key=(lambda o: distance(entity.position, o.position))
     )
+
+
+def get_enemy_path(entity: GameEntity) -> Graph:
+
+    # paths to be taken
+    world_paths_length = len(entity.world.paths)
+    path = None
+
+    # get all enemies
+    world = entity.world
+    opponents = [
+        e
+        for e in world.entities.values()
+        if (
+            e.team_id != 2
+            and e.team_id != entity.team_id
+            and not (e.name == "projectile" or e.name == "explosion" or e.name == "base" or e.name == "tower" or e.name == "orc")
+            and not e.ko
+        )
+    ]
+
+    opponent = filter(lambda e: e.name == entity.name, opponents).__next__()
+
+    # get their path
+    for path_index in range(0, world_paths_length):
+
+        if opponent.path_graph == entity.world.paths[path_index]:
+            path = entity.world.paths[path_index]
+
+    return path
