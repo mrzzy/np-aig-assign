@@ -44,7 +44,7 @@ class Character(GameEntity):
         GameEntity.process(self, time_passed)
 
         # check for death
-        if self.current_hp <= 0:
+        if self.current_hp <= 0 and self.team_id != 2:
 
             # add scores for opposing team
             if self.name == "orc":
