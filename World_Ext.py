@@ -528,7 +528,7 @@ def line_of_sight(
     entity: GameEntity,
     target: Union[GameEntity, Node],
     step_dist=10,
-    ray_width=20,
+    ray_width=26,
     collide_with: Iterable[str] = {"obstacle"},
 ) -> bool:
     """
@@ -538,7 +538,7 @@ def line_of_sight(
     """
     # shoot a virtual "ray" towards the target
     world = entity.world
-    ray = GameEntity(entity.world, "ray", Surface((step_dist, ray_width)))
+    ray = GameEntity(entity.world, "ray", Surface((ray_width, step_dist)))
     # ray of light's collision mask should be filled.
     ray.mask.fill()
     ray.position = entity.position
@@ -746,10 +746,11 @@ def find_ideal_projectile_target(
     b_length = (direct_vec_to_target.length() / math.sin(angle_C)) * math.sin(angle_A)
 
     # Determine which way to turn
-    # It should turn such that the aim_vec follows A->C
-    aim_vec = rotate_clockwise((target.position - proj_start_pos), angle_B)
-    aim_vec.scale_to_length(b_length)
-    if dot_prod(aim_vec, (aim_vec - target.position)) < 0:
+    # It should turn towards target.velocity
+    if dot_prod(target.velocity, rotate_right(target.position - proj_start_pos)) > 0:
+        aim_vec = rotate_clockwise((target.position - proj_start_pos), angle_B)
+        aim_vec.scale_to_length(b_length)
+    else:
         aim_vec = rotate_anticlockwise((target.position - proj_start_pos), angle_B)
         aim_vec.scale_to_length(b_length)
     final_vec = proj_start_pos + aim_vec
