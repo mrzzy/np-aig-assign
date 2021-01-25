@@ -103,16 +103,9 @@ class ArcherStateSeeking_TeamA(State):
         State.__init__(self, "seeking")
         self.archer = archer
 
-    def do_actions(self):
-        self.archer.velocity = seek(self.archer, self.archer.move_target.position)
-
-        # patch up health while seeking
-        if self.archer.current_hp < self.archer.max_hp:
-            self.archer.heal()
-
-    def check_conditions(self):
-        # check if being attacked
+    def get_opponent(self):
         # TODO (mrzzy): replace with collect_threats()
+        # check if being attacked
         attackers = get_attackers(self.archer)
         if len(attackers) > 0:
             # TODO(mrzzy): fight back against most threatening attacker
@@ -121,15 +114,26 @@ class ArcherStateSeeking_TeamA(State):
         else:
             # fight nearest opponent
             opponent = find_closest_opponent(
-                graph=self.archer.graph, entity=self.archer
+                graph=self.archer.graph,
+                entity=self.archer,
+                terror_radius=self.archer.min_target_distance,
             )
 
-        # check if opponent is in range
+        return opponent
+
+    def do_actions(self):
+        self.archer.velocity = seek(self.archer, self.archer.move_target.position)
+        self.opponent = self.get_opponent()
+
+        # patch up health while seeking and no opponent on rada
+        if self.archer.current_hp < self.archer.max_hp and not self.opponent:
+            self.archer.heal()
+
+    def check_conditions(self):
+        opponent = self.opponent
         if opponent is not None:
-            opponent_distance = (self.archer.position - opponent.position).length()
-            if opponent_distance <= self.archer.min_target_distance:
-                self.archer.target = opponent
-                return "combat"
+            self.archer.target = opponent
+            return "combat"
 
         if (self.archer.position - self.archer.move_target.position).length() < 8:
 
