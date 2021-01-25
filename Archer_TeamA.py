@@ -256,7 +256,7 @@ class ArcherStateCombat_TeamA(State):
             return "seeking"
 
         # lost line of sight: search for target or out of range
-        if not line_of_slight(
+        if not line_of_sight(
             self.archer, self.archer.target, ray_width=self.archer.projectile_size[1]
         ):
             return "searching"
@@ -321,7 +321,7 @@ class ArcherStateSearching_TeamA(State):
             return "seeking"
 
         # regain line of sight: return to combat mode
-        if line_of_slight(
+        if line_of_sight(
             self.archer,
             self.archer.target,
             ray_width=self.archer.projectile_size[1] * self.regain_sight_threshold,

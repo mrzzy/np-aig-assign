@@ -12,6 +12,12 @@ from World_Ext import *
 
 # Assume no enemy will have a ranged attack upgraded beyond 5 levels
 FLEE_RADIUS = 220 * 1.1 ** 5
+# 220 is the maximum radius of the projectile
+# 48 is half the size of the explosion
+ATTACK_CONSIDER_RADIUS = 220 + 48
+# The spot to hit to hit all 3 buildings
+SWEET_SPOT_BLUE = Vector2(881, 626)
+SWEET_SPOT_RED = Vector2(*SCREEN_SIZE) - Vector2(881, 626)
 
 
 class Wizard_TeamA(Character):
@@ -52,15 +58,22 @@ class Wizard_TeamA(Character):
         Character.render(self, surface)
 
         # Show flee targets if any
-        if DEBUG or True:
-            if not self.ko:
-                for flee_target in self.flee_targets:
-                    pygame.draw.line(
-                        surface,
-                        (0, 255, 0),
-                        self.position,
-                        flee_target.position,
-                    )
+        if DEBUG and not self.ko:
+            for flee_target in self.flee_targets:
+                pygame.draw.line(
+                    surface,
+                    (0, 255, 0),
+                    self.position,
+                    flee_target.position,
+                )
+
+            pygame.draw.circle(
+                surface,
+                (0, 0, 0),
+                tuple(map(int, self.position)),
+                ATTACK_CONSIDER_RADIUS,
+                2,
+            )
 
     def process(self, time_passed):
 
@@ -88,18 +101,18 @@ class WizardStateSeeking_TeamA(State):
             self.wizard.velocity *= self.wizard.maxSpeed
 
     def check_conditions(self):
-        if self.wizard.current_hp <= self.wizard.max_hp * 0.5:
+        if self.wizard.current_hp <= self.wizard.max_hp * 0.3:
             return "fleeing"
 
-        # check if opponent is in range
-        nearest_opponent = self.wizard.world.get_nearest_opponent(self.wizard)
-        if nearest_opponent is not None:
-            opponent_distance = (
-                self.wizard.position - nearest_opponent.position
-            ).length()
-            if opponent_distance <= self.wizard.min_target_distance:
-                self.wizard.target = nearest_opponent
-                return "attacking"
+        opponents = find_closest_opponent(
+            self.wizard.world.graph,
+            self.wizard,
+            ATTACK_CONSIDER_RADIUS,
+        )
+
+        if opponents:
+            self.wizard.targets = opponents
+            return "attacking"
 
         if (self.wizard.position - self.wizard.move_target.position).length() < 8:
 
@@ -139,45 +152,59 @@ class WizardStateAttacking_TeamA(State):
 
         State.__init__(self, "attacking")
         self.wizard = wizard
+        if self.wizard.team_id == 0:
+            self.sweet_spot = SWEET_SPOT_BLUE
+        else:
+            self.sweet_spot = SWEET_SPOT_RED
 
     def do_actions(self):
+        self.wizard.targets = find_closest_opponents(
+            self.wizard.world.graph,
+            self.wizard,
+            ATTACK_CONSIDER_RADIUS,
+        )
 
-        opponent_distance = (
-            self.wizard.position - self.wizard.target.position
-        ).length()
+        target_positions = []
+        for target in self.wizard.targets:
+            pos = find_ideal_projectile_target(
+                target, self.wizard.position, self.wizard.projectile_speed
+            )
+            target_positions.append(pos)
+            if target.name in {"tower", "base"}:
+                # Hit all three things when possible
+                target_positions = [self.sweet_spot]
 
-        # opponent within range
-        if opponent_distance <= self.wizard.min_target_distance:
+        if target_positions:
+            target_positions = remove_outliers(target_positions)
+            position = calculate_mean(target_positions)
+
             self.wizard.velocity = Vector2(0, 0)
             if self.wizard.current_ranged_cooldown <= 0:
-                position = self.wizard.target.position
-
-                # Hit all three things when possible
-                if self.wizard.target.name in {"tower", "base"}:
-                    # Right-side base
-                    position = Vector2(881, 626)
-                    # Flip if the target base is the left-side base
-                    if self.wizard.target.position.x > 1024:
-                        position = Vector2(*SCREEN_SIZE) - position
-
                 self.wizard.ranged_attack(position, self.wizard.explosion_image)
 
-        else:
-            self.wizard.velocity = self.wizard.target.position - self.wizard.position
-            if self.wizard.velocity.length() > 0:
-                self.wizard.velocity.normalize_ip()
-                self.wizard.velocity *= self.wizard.maxSpeed
+            if (
+                target_positions[0] == self.sweet_spot
+                and distance(self.wizard.position, self.sweet_spot)
+                > self.wizard.projectile_range
+            ):
+                # Move towards the sweet spot
+                final_direction = self.sweet_spot - self.wizard.position
+                final_direction = avoid_obstacles(self.wizard, final_direction)
+
+                # Glide along edges
+                final_direction = avoid_edges(self.wizard.position, final_direction)
+
+                self.wizard.velocity = final_direction
+
+                if self.wizard.velocity.length() > 0:
+                    self.wizard.velocity.normalize_ip()
+                    self.wizard.velocity *= self.wizard.maxSpeed
 
     def check_conditions(self):
         if self.wizard.current_hp <= self.wizard.max_hp * 0.3:
             return "fleeing"
 
-        # target is gone
-        if (
-            self.wizard.world.get(self.wizard.target.id) is None
-            or self.wizard.target.ko
-        ):
-            self.wizard.target = None
+        if len(self.wizard.targets) == 0:
             return "seeking"
 
         return None
@@ -205,13 +232,13 @@ class WizardStateFleeing_TeamA(State):
         # Set flee targets
         self.wizard.flee_targets = immediate_threats
 
-        # # Calculate the flee direction from all the threats
+        # Calculate the flee direction from all the threats
         final_direction = avoid_entities(self.wizard, immediate_threats)
 
         if not immediate_threats:
             final_direction = avoid_entities(self.wizard, non_immediate_threats)
 
-        # # Move along the obstacle lines if near them
+        # Move along the obstacle lines if near them
         final_direction = avoid_obstacles(self.wizard, final_direction)
 
         # Glide along edges
