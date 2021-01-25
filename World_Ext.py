@@ -632,15 +632,16 @@ def route_dist(
     return distance(v1, v1_node.position) + path_dist + distance(v2_node.position, v2)
 
 
-def find_closest_opponent(
+def find_closest_opponents(
     graph: Graph,
     entity: GameEntity,
     terror_radius: float = None,
-) -> Optional[GameEntity]:
+) -> List[GameEntity]:
     """
-    Finds the closest opponent based on within line of sight
+    Finds the opponents within line of sight and terror radius
+    Returns a sorted list with the closest opponent first
     """
-    # default terror_radius to entity's min_target_distance if unsef
+    # default terror_radius to entity's min_target_distance if unset
     if terror_radius is None:
         terror_radius = entity.min_target_distance
     # filter game entities into opponents
@@ -657,9 +658,24 @@ def find_closest_opponent(
             and line_of_slight(entity, e)
         )
     ]
-    return min(
-        opponents, default=None, key=(lambda o: distance(entity.position, o.position))
-    )
+
+    opponents.sort(key=lambda e: distance(entity.position, e.position))
+    return opponents
+
+
+def find_closest_opponent(
+    graph: Graph,
+    entity: GameEntity,
+    terror_radius: float = None,
+) -> Optional[GameEntity]:
+    """
+    Finds the closest opponent based on within line of sight
+    """
+    opponents = find_closest_opponents(graph, entity, terror_radius)
+    if opponents:
+        return opponents[0]
+    else:
+        return None
 
 
 def find_ideal_projectile_target(
@@ -691,9 +707,15 @@ def find_ideal_projectile_target(
     angle_C = math.pi - angle_A - angle_B
     b_length = (direct_vec_to_target.length() / math.sin(angle_C)) * math.sin(angle_A)
 
+    # Determine which way to turn
+    # It should turn such that the aim_vec follows A->C
     aim_vec = rotate_clockwise((target.position - proj_start_pos), angle_B)
     aim_vec.scale_to_length(b_length)
+    if dot_prod(aim_vec, (aim_vec - target.position)) < 0:
+        aim_vec = rotate_anticlockwise((target.position - proj_start_pos), angle_B)
+        aim_vec.scale_to_length(b_length)
     final_vec = proj_start_pos + aim_vec
+
     # Apparently when the shooting at the current position, the game crashes
     # because of how ranged_attack is implemented
     if round(final_vec.x) == round(proj_start_pos.x) and \
