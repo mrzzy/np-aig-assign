@@ -519,7 +519,10 @@ def project_position(target: GameEntity, time_secs: float) -> Vector2:
     if target.velocity.length() > 0:
         move_target = None
         # TODO(mrzzy): use brain state to better figure out what the target is trying to.
-        if (
+        if len(detect_collisions(target, collide_with=["obstacle"], any_one=True)) > 0:
+            # assume target is stuck
+            project_position = Vector2(0, 0)
+        elif (
             getattr(target, "target", None) is not None
             and distance(target.position, target.target.position)
             <= target.min_target_distance
