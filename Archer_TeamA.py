@@ -83,8 +83,8 @@ class Archer_TeamA(Character):
 
         level_up_stats_weighted = [
             ("ranged cooldown", 0.6),
-            ("projectile range", 0.3),
-            ("healing cooldown", 0.1),
+            ("projectile range", 0.2),
+            ("speed", 0.2),
         ]
         if self.can_level_up():
             upgrade_stat = random_choices(
