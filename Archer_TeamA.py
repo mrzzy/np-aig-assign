@@ -125,7 +125,7 @@ class ArcherStateSeeking_TeamA(State):
         self.archer.velocity = seek(self.archer, self.archer.move_target.position)
         self.opponent = self.get_opponent()
 
-        # patch up health while seeking and no opponent on rada
+        # patch up health while seeking and no opponent in sight
         if self.archer.current_hp < self.archer.max_hp and not self.opponent:
             self.archer.heal()
 
@@ -147,7 +147,6 @@ class ArcherStateSeeking_TeamA(State):
         return None
 
     def entry_actions(self):
-        # TODO(mrzzy): replace path graph with graph + starting position.
         base = self.archer.base
         if distance(self.archer.position, base.spawn_position) <= 0:
             # just spawned: navigating via starting node
@@ -263,9 +262,13 @@ class ArcherStateSearching_TeamA(State):
         State.__init__(self, "searching")
         self.archer = archer
         self.search_offset = 150
+        self.heal_threshold = 0.75
 
     def do_actions(self):
-        # TODO(mrzzy): patch up on health when searching?
+        # patch up on health when searching
+        if (self.archer.current_hp / self.archer.max_hp) < self.heal_threshold:
+            self.archer.heal()
+
         # move to search the target's position, navigating the graph as required.
         current_pos, opponent, world, graph, time_passed = (
             self.archer.position,
