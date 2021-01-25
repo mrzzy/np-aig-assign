@@ -154,6 +154,44 @@ def rotate_anticlockwise(vec: Vector2, angle_rad: float) -> Vector2:
     return rotate_clockwise(vec, 2 * math.pi - angle_rad)
 
 
+def calculate_mean(positions: List[Vector2]) -> Vector2:
+    x_total, y_total = 0, 0
+    for pos in positions:
+        x_total += pos.x
+        y_total += pos.y
+
+    x_mean = x_total / float(len(positions))
+    y_mean = y_total / float(len(positions))
+
+    return Vector2(x_mean, y_mean)
+
+
+def remove_outliers(positions: List[Vector2]) -> List[Vector2]:
+    OUTLIER_THRESHOLD = 40
+    x_mean, y_mean = calculate_mean(positions)
+
+    squared_diffs_x = 0
+    squared_diffs_y = 0
+    for pos in positions:
+        squared_diffs_x += abs(pos.x - x_mean) ** 2
+        squared_diffs_y += abs(pos.y - y_mean) ** 2
+
+    x_stdev = math.sqrt(squared_diffs_x / len(positions))
+    y_stdev = math.sqrt(squared_diffs_y / len(positions))
+
+    if x_stdev < OUTLIER_THRESHOLD and y_stdev < OUTLIER_THRESHOLD:
+        return positions
+
+    if x_stdev > y_stdev:
+        # The variance of x is larger, so remove outliers based on x
+        sorted_pos = sorted(positions, key=lambda x: x.x)
+    else:
+        sorted_pos = sorted(positions, key=lambda x: x.y)
+
+    # Return the interquartile values
+    return sorted_pos[len(positions)//4:(3*len(positions)//4)]
+
+
 # Finding entities
 def filter_entities(entities: List[GameEntity], filters):
     for e in entities:
