@@ -182,7 +182,6 @@ class WizardStateAttacking_TeamA(State):
             self.wizard.velocity = Vector2(0, 0)
             if self.wizard.current_ranged_cooldown <= 0:
                 self.wizard.ranged_attack(position, self.wizard.explosion_image)
-                self.wizard.world.pause = True
 
             if (
                 target_positions[0] == self.sweet_spot
