@@ -71,6 +71,14 @@ class KnightStateSeeking_TeamA(State):
 
     def check_conditions(self):
 
+        # protect base if nearby
+        if (self.knight.base.position - self.knight.position).length() < 150:
+            enemies = enemies_targetting(self.knight.base, self.knight.world)
+            if len(enemies) > 0:
+                enemy = min(enemies, key=lambda x: x.current_hp)
+                self.knight.target = enemy
+                return "attacking"
+
         # check if opponent is in range
         nearest_opponent = self.knight.world.get_nearest_opponent(self.knight)
 
