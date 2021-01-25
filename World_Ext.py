@@ -524,7 +524,7 @@ def detect_collisions(entity: GameEntity, collide_with: Iterable[str], any_one=F
     return collisions
 
 
-def line_of_slight(
+def line_of_sight(
     entity: GameEntity,
     target: Union[GameEntity, Node],
     step_dist=10,
@@ -557,7 +557,7 @@ def line_of_slight(
             collided, collide_pt = collisions[0]
             # check that we are not colliding with our target
             if collided.id != target.id:
-                # no line of slight: ray collided
+                # no line of sight: ray collided
                 return False
     return True
 
@@ -693,7 +693,7 @@ def find_closest_opponents(
             and not (e.name == "projectile" or e.name == "explosion")
             and not e.ko
             and distance(entity.position, e.position) <= terror_radius
-            and line_of_slight(entity, e)
+            and line_of_sight(entity, e)
         )
     ]
 
