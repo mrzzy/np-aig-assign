@@ -186,32 +186,13 @@ class KnightStateFleeing_TeamA(State):
 
                 # move if there are enemies
                 if nearest_opponent is not None:
-                    self.getNewPath()
+                    getNewPath(self)
 
         return None
 
     def entry_actions(self):
 
-        self.getNewPath()
-
-    def getNewPath(self):
-        nearest_node = self.path_graph.get_nearest_node(self.knight.position)
-
-        nodes = list(self.knight.world.graph.nodes.values())
-        random_end_node = nearest_node
-        while random_end_node.id == nearest_node.id:
-            random_end_node = self.possible_end_nodes[randint(0, 2)]
-
-        self.path = pathFindAStar(self.path_graph, nearest_node, random_end_node)
-
-        self.path_length = len(self.path)
-
-        if self.path_length > 0:
-            self.current_connection = 0
-            self.knight.move_target.position = self.path[0].fromNode.position
-
-        else:
-            self.knight.move_target.position = None
+        getNewPath(self)
 
 
 class KnightStateAttacking_TeamA(State):
@@ -389,4 +370,23 @@ def time_to_kill(chara, enemy, attack_type):
         attack_speed = chara.melee_cooldown
         attack_pts = chara.melee_damage
 
-    return enemy.current_hp / (attack_pts) * attack_speed
+    return (enemy.current_hp / (attack_pts) * attack_speed) + chara.current_healing_cooldown
+
+def getNewPath(chara):
+    nearest_node = chara.path_graph.get_nearest_node(chara.knight.position)
+
+    nodes = list(chara.knight.world.graph.nodes.values())
+    random_end_node = nearest_node
+    while random_end_node.id == nearest_node.id:
+        random_end_node = chara.possible_end_nodes[randint(0, 2)]
+
+    chara.path = pathFindAStar(chara.path_graph, nearest_node, random_end_node)
+
+    chara.path_length = len(chara.path)
+
+    if chara.path_length > 0:
+        chara.current_connection = 0
+        chara.knight.move_target.position = chara.path[0].fromNode.position
+
+    else:
+        chara.knight.move_target.position = None
