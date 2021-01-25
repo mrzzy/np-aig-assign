@@ -1,6 +1,7 @@
 # Since we cannot modify the world.py file, we can only create functions which
 # take in the world as argument and act on world's attributes
 
+import math
 import random
 from os import close
 from pygame import Vector2, sprite, Surface
@@ -83,6 +84,12 @@ def unit_proj_vec(vec1: Vector2, vec2: Vector2) -> Vector2:
     return vec.normalize()
 
 
+def angle_between(vec1: Vector2, vec2: Vector2) -> float:
+    """Returns the angle between the two vectors in the interval (0,180]"""
+    cos_angle = dot_prod(vec1.normalize(), vec2.normalize())
+    return math.acos(round(cos_angle, 5))
+
+
 def foot_of_perpendicular(
     pos: Vector2, line_start: Vector2, line_end: Vector2
 ) -> Vector2:
@@ -134,6 +141,17 @@ def foot_on_line(pos: Vector2, seg_start: Vector2, seg_end: Vector2) -> Vector2:
 def rotate_right(vec: Vector2) -> Vector2:
     """Rotates a vector 90 degrees to the right"""
     return Vector2(-vec[1], vec[0])
+
+
+def rotate_clockwise(vec: Vector2, angle_rad: float) -> Vector2:
+    return Vector2(
+        vec.x * math.cos(angle_rad) - vec.y * math.sin(angle_rad),
+        vec.x * math.sin(angle_rad) + vec.y * math.cos(angle_rad),
+    )
+
+
+def rotate_anticlockwise(vec: Vector2, angle_rad: float) -> Vector2:
+    return rotate_clockwise(vec, 2 * math.pi - angle_rad)
 
 
 # Finding entities
@@ -642,3 +660,44 @@ def find_closest_opponent(
     return min(
         opponents, default=None, key=(lambda o: distance(entity.position, o.position))
     )
+
+
+def find_ideal_projectile_target(
+    target: GameEntity,
+    proj_start_pos: Vector2,
+    proj_speed: float,
+) -> Vector2:
+    direct_vec_to_target = target.position - proj_start_pos
+
+    if target.velocity.length() == 0:
+        return proj_start_pos + direct_vec_to_target
+
+    # target                 proj_start_pos
+    # \---/-------------------\--/
+    #  \ /angle A      angle B \/
+    #   \                      /
+    #    \                    /
+    #     \                  /
+    #      \                /
+    #       \              /
+    # side b \            / side a
+    #         \          /
+
+    b_over_a = target.maxSpeed / proj_speed
+    angle_A = angle_between((proj_start_pos - target.position), target.velocity)
+    sin_B = b_over_a * math.sin(angle_A)
+    angle_B = math.asin(sin_B)
+
+    angle_C = math.pi - angle_A - angle_B
+    b_length = (direct_vec_to_target.length() / math.sin(angle_C)) * math.sin(angle_A)
+
+    aim_vec = rotate_clockwise((target.position - proj_start_pos), angle_B)
+    aim_vec.scale_to_length(b_length)
+    final_vec = proj_start_pos + aim_vec
+    # Apparently when the shooting at the current position, the game crashes
+    # because of how ranged_attack is implemented
+    if round(final_vec.x) == round(proj_start_pos.x) and \
+            round(final_vec.y) == round(proj_start_pos.y):
+        final_vec.x += 1
+
+    return final_vec
