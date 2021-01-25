@@ -41,17 +41,19 @@ class Wizard_TeamA(Character):
         self.projectile_range = 100
         self.projectile_speed = 100
 
+        waiting_state = wait_and_copy(self.name)(self)
         seeking_state = WizardStateSeeking_TeamA(self)
         fleeing_state = WizardStateFleeing_TeamA(self)
         attacking_state = WizardStateAttacking_TeamA(self)
         ko_state = WizardStateKO_TeamA(self)
 
+        self.brain.add_state(waiting_state)
         self.brain.add_state(seeking_state)
         self.brain.add_state(fleeing_state)
         self.brain.add_state(attacking_state)
         self.brain.add_state(ko_state)
 
-        self.brain.set_state("seeking")
+        self.brain.set_state("waiting")
 
     def render(self, surface):
 
