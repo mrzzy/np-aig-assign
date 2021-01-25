@@ -1,6 +1,7 @@
 # Since we cannot modify the world.py file, we can only create functions which
 # take in the world as argument and act on world's attributes
 
+from State import State
 import math
 import random
 from os import close
@@ -777,3 +778,28 @@ def find_ideal_projectile_target(
         final_vec.x += 1
 
     return final_vec
+
+
+# Common States
+def wait_and_copy(name: str):
+    class WaitingCommonState(State):
+        def __init__(self, character):
+            super().__init__("waiting")
+            self.character = character
+
+        def check_conditions(self):
+            super().check_conditions()
+
+            opp_character = None
+            for e in self.character.world.entities.values():
+                if e.name == name and e.team_id != self.character.team_id:
+                    opp_character = e
+
+            if (
+                opp_character
+                and getattr(opp_character, "path_graph", None) is not None
+            ):
+                self.character.path_graph = opp_character.path_graph
+                return "seeking"
+
+    return WaitingCommonState
