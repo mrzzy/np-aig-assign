@@ -1,6 +1,7 @@
 # Since we cannot modify the world.py file, we can only create functions which
 # take in the world as argument and act on world's attributes
 
+import math
 import random
 from os import close
 from pygame import Vector2, sprite, Surface
@@ -83,6 +84,12 @@ def unit_proj_vec(vec1: Vector2, vec2: Vector2) -> Vector2:
     return vec.normalize()
 
 
+def angle_between(vec1: Vector2, vec2: Vector2) -> float:
+    """Returns the angle between the two vectors in the interval (0,180]"""
+    cos_angle = dot_prod(vec1.normalize(), vec2.normalize())
+    return math.acos(round(cos_angle, 5))
+
+
 def foot_of_perpendicular(
     pos: Vector2, line_start: Vector2, line_end: Vector2
 ) -> Vector2:
@@ -134,6 +141,55 @@ def foot_on_line(pos: Vector2, seg_start: Vector2, seg_end: Vector2) -> Vector2:
 def rotate_right(vec: Vector2) -> Vector2:
     """Rotates a vector 90 degrees to the right"""
     return Vector2(-vec[1], vec[0])
+
+
+def rotate_clockwise(vec: Vector2, angle_rad: float) -> Vector2:
+    return Vector2(
+        vec.x * math.cos(angle_rad) - vec.y * math.sin(angle_rad),
+        vec.x * math.sin(angle_rad) + vec.y * math.cos(angle_rad),
+    )
+
+
+def rotate_anticlockwise(vec: Vector2, angle_rad: float) -> Vector2:
+    return rotate_clockwise(vec, 2 * math.pi - angle_rad)
+
+
+def calculate_mean(positions: List[Vector2]) -> Vector2:
+    x_total, y_total = 0, 0
+    for pos in positions:
+        x_total += pos.x
+        y_total += pos.y
+
+    x_mean = x_total / float(len(positions))
+    y_mean = y_total / float(len(positions))
+
+    return Vector2(x_mean, y_mean)
+
+
+def remove_outliers(positions: List[Vector2]) -> List[Vector2]:
+    OUTLIER_THRESHOLD = 40
+    x_mean, y_mean = calculate_mean(positions)
+
+    squared_diffs_x = 0
+    squared_diffs_y = 0
+    for pos in positions:
+        squared_diffs_x += abs(pos.x - x_mean) ** 2
+        squared_diffs_y += abs(pos.y - y_mean) ** 2
+
+    x_stdev = math.sqrt(squared_diffs_x / len(positions))
+    y_stdev = math.sqrt(squared_diffs_y / len(positions))
+
+    if x_stdev < OUTLIER_THRESHOLD and y_stdev < OUTLIER_THRESHOLD:
+        return positions
+
+    if x_stdev > y_stdev:
+        # The variance of x is larger, so remove outliers based on x
+        sorted_pos = sorted(positions, key=lambda x: x.x)
+    else:
+        sorted_pos = sorted(positions, key=lambda x: x.y)
+
+    # Return the interquartile values
+    return sorted_pos[len(positions) // 4 : (3 * len(positions) // 4)]
 
 
 # Finding entities
@@ -468,11 +524,11 @@ def detect_collisions(entity: GameEntity, collide_with: Iterable[str], any_one=F
     return collisions
 
 
-def line_of_slight(
+def line_of_sight(
     entity: GameEntity,
     target: Union[GameEntity, Node],
     step_dist=10,
-    ray_width=20,
+    ray_width=26,
     collide_with: Iterable[str] = {"obstacle"},
 ) -> bool:
     """
@@ -482,7 +538,7 @@ def line_of_slight(
     """
     # shoot a virtual "ray" towards the target
     world = entity.world
-    ray = GameEntity(entity.world, "ray", Surface((step_dist, ray_width)))
+    ray = GameEntity(entity.world, "ray", Surface((ray_width, step_dist)))
     # ray of light's collision mask should be filled.
     ray.mask.fill()
     ray.position = entity.position
@@ -501,9 +557,12 @@ def line_of_slight(
             collided, collide_pt = collisions[0]
             # check that we are not colliding with our target
             if collided.id != target.id:
-                # no line of slight: ray collided
+                # no line of sight: ray collided
                 return False
     return True
+
+
+# TODO(mrzzy): project brain state based on Levenshtein distance
 
 
 def project_position(target: GameEntity, time_secs: float) -> Vector2:
@@ -515,20 +574,31 @@ def project_position(target: GameEntity, time_secs: float) -> Vector2:
     # only project velocity if he is actively moving
     if target.velocity.length() > 0:
         move_target = None
-        if getattr(target, "target", None) is not None:
-            move_target = target.target
-        elif getattr(target, "move_target", None) is not None:
-            move_target = target.move_target
-
-        # project velocity if it has not yet reached move target
-        # distance check required to prevent normalizing 0
-        if (
-            move_target is not None
-            and (move_target.position - target.position).length() > 0
+        # TODO(mrzzy): use brain state to better figure out what the target is trying to.
+        if len(detect_collisions(target, collide_with=["obstacle"], any_one=True)) > 0:
+            # assume target is stuck
+            project_position = Vector2(0, 0)
+        elif (
+            getattr(target, "target", None) is not None
+            and distance(target.position, target.target.position)
+            <= target.min_target_distance
         ):
-            projected_velocity = (
-                move_target.position - target.position
-            ).normalize() * target.maxSpeed
+            # assume that target is trying to attack its own target within target distance
+            if sprite.collide_rect(target, target.target):
+                # collided with its own target: estimate velocity to its own target's velocity
+                projected_velocity = target.target.velocity
+            else:
+                # project that the target is seeking its own target
+                projected_velocity = (
+                    target.target.position - target.position
+                ).normalize() * target.maxSpeed
+        elif getattr(target, "move_target", None) is not None:
+            # assume that target is trying to seek its move target
+            if distance(target.position, target.move_target.position) > 0:
+                # project that the target is seeking its move target
+                projected_velocity = (
+                    target.move_target.position - target.position
+                ).normalize() * target.maxSpeed
 
     # project the targets position using velocity and the time passed in the previous frame
     projected_pos = Vector2(target.position + (projected_velocity * time_secs))
@@ -614,15 +684,16 @@ def route_dist(
     return distance(v1, v1_node.position) + path_dist + distance(v2_node.position, v2)
 
 
-def find_closest_opponent(
+def find_closest_opponents(
     graph: Graph,
     entity: GameEntity,
     terror_radius: float = None,
-) -> Optional[GameEntity]:
+) -> List[GameEntity]:
     """
-    Finds the closest opponent based on within line of sight
+    Finds the opponents within line of sight and terror radius
+    Returns a sorted list with the closest opponent first
     """
-    # default terror_radius to entity's min_target_distance if unsef
+    # default terror_radius to entity's min_target_distance if unset
     if terror_radius is None:
         terror_radius = entity.min_target_distance
     # filter game entities into opponents
@@ -636,9 +707,73 @@ def find_closest_opponent(
             and not (e.name == "projectile" or e.name == "explosion")
             and not e.ko
             and distance(entity.position, e.position) <= terror_radius
-            and line_of_slight(entity, e)
+            and line_of_sight(entity, e)
         )
     ]
-    return min(
-        opponents, default=None, key=(lambda o: distance(entity.position, o.position))
-    )
+
+    opponents.sort(key=lambda e: distance(entity.position, e.position))
+    return opponents
+
+
+def find_closest_opponent(
+    graph: Graph,
+    entity: GameEntity,
+    terror_radius: float = None,
+) -> Optional[GameEntity]:
+    """
+    Finds the closest opponent based on within line of sight
+    """
+    opponents = find_closest_opponents(graph, entity, terror_radius)
+    if opponents:
+        return opponents[0]
+    else:
+        return None
+
+
+def find_ideal_projectile_target(
+    target: GameEntity,
+    proj_start_pos: Vector2,
+    proj_speed: float,
+) -> Vector2:
+    direct_vec_to_target = target.position - proj_start_pos
+
+    if target.velocity.length() == 0:
+        return proj_start_pos + direct_vec_to_target
+
+    # target                 proj_start_pos
+    # \---/-------------------\--/
+    #  \ /angle A      angle B \/
+    #   \                      /
+    #    \                    /
+    #     \                  /
+    #      \                /
+    #       \              /
+    # side b \            / side a
+    #         \          /
+
+    b_over_a = target.maxSpeed / proj_speed
+    angle_A = angle_between((proj_start_pos - target.position), target.velocity)
+    sin_B = b_over_a * math.sin(angle_A)
+    angle_B = math.asin(sin_B)
+
+    angle_C = math.pi - angle_A - angle_B
+    b_length = (direct_vec_to_target.length() / math.sin(angle_C)) * math.sin(angle_A)
+
+    # Determine which way to turn
+    # It should turn towards target.velocity
+    if dot_prod(target.velocity, rotate_right(target.position - proj_start_pos)) > 0:
+        aim_vec = rotate_clockwise((target.position - proj_start_pos), angle_B)
+        aim_vec.scale_to_length(b_length)
+    else:
+        aim_vec = rotate_anticlockwise((target.position - proj_start_pos), angle_B)
+        aim_vec.scale_to_length(b_length)
+    final_vec = proj_start_pos + aim_vec
+
+    # Apparently when the shooting at the current position, the game crashes
+    # because of how ranged_attack is implemented
+    if round(final_vec.x) == round(proj_start_pos.x) and round(final_vec.y) == round(
+        proj_start_pos.y
+    ):
+        final_vec.x += 1
+
+    return final_vec
