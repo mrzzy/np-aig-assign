@@ -43,6 +43,7 @@ class Knight_TeamA(Character):
         Character.process(self, time_passed)
 
         level_up_stats = ["healing_cooldown", "speed", "melee cooldown"]
+
         if self.can_level_up():
             choice = randint(0, len(level_up_stats) - 1)
             self.level_up(level_up_stats[choice])
@@ -180,35 +181,14 @@ class KnightStateFleeing_TeamA(State):
 
                 # move if there are enemies
                 if nearest_opponent is not None:
-                    self.getNewPath()
+                    getNewPath(self)
             
         return None
 
 
     def entry_actions(self):
 
-        self.getNewPath()
-
-    def getNewPath(self):
-        nearest_node = self.path_graph.get_nearest_node(self.knight.position)
-
-        nodes = list(self.knight.world.graph.nodes.values())
-        random_end_node = nearest_node
-        while random_end_node.id == nearest_node.id:
-            random_end_node = self.possible_end_nodes[randint(0, 2)]
-
-        self.path = pathFindAStar(self.path_graph, \
-                                  nearest_node, \
-                                  random_end_node)
-        
-        self.path_length = len(self.path)
-
-        if (self.path_length > 0):
-            self.current_connection = 0
-            self.knight.move_target.position = self.path[0].fromNode.position
-
-        else:
-            self.knight.move_target.position = None
+        getNewPath(self)
 
 
 
@@ -245,10 +225,12 @@ class KnightStateAttacking_TeamA(State):
 
             enemies = enemies_targetting(self.knight, self.knight.world)
 
-            # if character can kill first 
-            # or enemies no longer targetting character
+            # if enemies no longer targetting character,
+            # can't outrun enemy,
+            # or character can kill first
             if (
                 len(enemies) < 1  or
+                not can_outrun(self.knight, enemies) or
                 time_to_death(self.knight, enemies) > 
                 time_to_kill(self.knight, self.knight.target, "melee")
             ):
@@ -357,10 +339,15 @@ def time_to_death(chara, enemies):
 
             # -- check cooldown
             if cooldown[i] <= 0:
+
                 # -- if cooldown ended, add damage
                 total_damage += attack_pts[i]
+
                 # -- reset cooldown
-                cooldown[i] = original_cooldown[i] + cooldown[i]
+                # if current cooldown < 0, remove it from original cooldown
+                # e.g. cooldown = -0.2, original_cooldown = 2
+                # e.g. new cooldown = 2 + (-0.2) = 1.8
+                cooldown[i] = original_cooldown[i] + cooldown[i] 
 
             else:
                 cooldown[i] -= 1
@@ -388,5 +375,53 @@ def time_to_kill(chara, enemy, attack_type):
         attack_speed = chara.melee_cooldown
         attack_pts = chara.melee_damage
 
-    return enemy.current_hp / (attack_pts) * attack_speed
+    return enemy.current_hp / (attack_pts) * attack_speed + chara.current_healing_cooldown
+
+
+# if character can outheal enemies, return True
+def can_outrun(chara, enemies):
+
+    damage_per_healing_cooldown = 0
+
+    for enemy in enemies:
+
+        if chara.maxSpeed > enemy.maxSpeed:
+            continue
+
+        else:
+
+            damage_dealt = 0
+
+            # if character can't outrun them, can they heal more than their damage?
+            if enemy.name == "archer" or enemy.name == "wizard":
+                damage_dealt = enemy.ranged_damage * chara.healing_cooldown // enemy.ranged_cooldown
+            else:
+                damage_dealt = enemy.melee_damage * chara.healing_cooldown // enemy.melee_cooldown
+
+            damage_per_healing_cooldown += damage_dealt if damage_dealt else enemy.ranged_damage
+
+    return damage_per_healing_cooldown < chara.max_hp * (chara.healing_percentage / 100)
+
+# get new path
+def getNewPath(charaState):
+    nearest_node = charaState.path_graph.get_nearest_node(charaState.knight.position)
+
+    nodes = list(charaState.knight.world.graph.nodes.values())
+    end_node = nearest_node
+    
+    while end_node.id == nearest_node.id:
+        end_node = charaState.possible_end_nodes[randint(0, 2)]
+
+    charaState.path = pathFindAStar(charaState.path_graph, \
+                              nearest_node, \
+                              end_node)
+    
+    charaState.path_length = len(charaState.path)
+
+    if (charaState.path_length > 0):
+        charaState.current_connection = 0
+        charaState.knight.move_target.position = charaState.path[0].fromNode.position
+
+    else:
+        charaState.knight.move_target.position = None
 
