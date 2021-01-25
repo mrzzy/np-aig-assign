@@ -23,10 +23,12 @@ class Knight_TeamA(Character):
         self.melee_cooldown = 2.0
 
         seeking_state = KnightStateSeeking_TeamA(self)
+        fleeing_state = KnightStateFleeing_TeamA(self)
         attacking_state = KnightStateAttacking_TeamA(self)
         ko_state = KnightStateKO_TeamA(self)
 
         self.brain.add_state(seeking_state)
+        self.brain.add_state(fleeing_state)
         self.brain.add_state(attacking_state)
         self.brain.add_state(ko_state)
 
@@ -40,7 +42,7 @@ class Knight_TeamA(Character):
 
         Character.process(self, time_passed)
 
-        level_up_stats = ["hp", "speed", "melee damage", "melee cooldown"]
+        level_up_stats = ["healing_cooldown", "speed", "melee cooldown"]
         if self.can_level_up():
             choice = randint(0, len(level_up_stats) - 1)
             self.level_up(level_up_stats[choice])
@@ -57,6 +59,9 @@ class KnightStateSeeking_TeamA(State):
         ]
 
     def do_actions(self):
+
+        if self.knight.current_hp < self.knight.max_hp:
+            self.knight.heal()
 
         self.knight.velocity = self.knight.move_target.position - self.knight.position
         if self.knight.velocity.length() > 0:
@@ -108,6 +113,107 @@ class KnightStateSeeking_TeamA(State):
             ].position
 
 
+class KnightStateFleeing_TeamA(State):
+    def __init__(self, knight):
+
+        State.__init__(self, "fleeing")
+        self.knight = knight
+
+        # set end nodes to be near team base
+        if self.knight.team_id == 0:
+            keys = [5, 0, 1, 2]
+        else:
+            keys = [3, 4, 7, 6]
+
+        self.possible_end_nodes = [
+            self.knight.world.graph.nodes.get(key) for key in keys
+        ]
+
+        # set graph to world graph
+        self.path_graph = self.knight.world.graph
+
+    def do_actions(self):
+
+        self.knight.heal()
+
+        if self.knight.move_target.position != None:
+
+            self.knight.velocity = (
+                self.knight.move_target.position - self.knight.position
+            )
+
+            if self.knight.velocity.length() > 0:
+                self.knight.velocity.normalize_ip()
+                self.knight.velocity *= self.knight.maxSpeed
+
+    def check_conditions(self):
+
+        if self.knight.target != None:
+
+            # if target targetting chara and chara can kill without dying
+            if (
+                self.knight.target.target
+                and self.knight.target.target.id == self.knight.id
+            ):
+
+                enemies = enemies_targetting(self.knight, self.knight.world)
+
+                if time_to_death(self.knight, enemies) > time_to_kill(
+                    self.knight, self.knight.target, "melee"
+                ):
+                    return "attacking"
+            else:
+
+                self.knight.target = None
+                return "seeking"
+
+        # if knight hp >= 85%
+        if self.knight.current_hp >= self.knight.max_hp * 0.85:
+            return "seeking"
+
+        if (self.knight.position - self.knight.move_target.position).length() < 8:
+
+            # continue on path
+            if self.current_connection < self.path_length:
+                self.knight.move_target.position = self.path[
+                    self.current_connection
+                ].toNode.position
+                self.current_connection += 1
+
+            # reached end of path
+            else:
+                nearest_opponent = self.knight.world.get_nearest_opponent(self.knight)
+
+                # move if there are enemies
+                if nearest_opponent is not None:
+                    self.getNewPath()
+
+        return None
+
+    def entry_actions(self):
+
+        self.getNewPath()
+
+    def getNewPath(self):
+        nearest_node = self.path_graph.get_nearest_node(self.knight.position)
+
+        nodes = list(self.knight.world.graph.nodes.values())
+        random_end_node = nearest_node
+        while random_end_node.id == nearest_node.id:
+            random_end_node = self.possible_end_nodes[randint(0, 2)]
+
+        self.path = pathFindAStar(self.path_graph, nearest_node, random_end_node)
+
+        self.path_length = len(self.path)
+
+        if self.path_length > 0:
+            self.current_connection = 0
+            self.knight.move_target.position = self.path[0].fromNode.position
+
+        else:
+            self.knight.move_target.position = None
+
+
 class KnightStateAttacking_TeamA(State):
     def __init__(self, knight):
 
@@ -136,6 +242,19 @@ class KnightStateAttacking_TeamA(State):
         ):
             self.knight.target = None
             return "seeking"
+
+        if self.knight.current_hp <= self.knight.max_hp * 0.3:
+
+            enemies = enemies_targetting(self.knight, self.knight.world)
+
+            # if character can kill first
+            # or enemies no longer targetting character
+            if len(enemies) < 1 or time_to_death(self.knight, enemies) > time_to_kill(
+                self.knight, self.knight.target, "melee"
+            ):
+                return None
+
+            return "fleeing"
 
         return None
 
@@ -175,3 +294,99 @@ class KnightStateKO_TeamA(State):
         self.knight.target = None
 
         return None
+
+
+# get numbre of enemies targetting character
+def enemies_targetting(chara, world):
+
+    enemies = []
+
+    for entity in world.entities.values():
+
+        # neutral entity
+        if entity.team_id == 2:
+            continue
+
+        # same team
+        if entity.team_id == chara.team_id:
+            continue
+
+        if entity.name == "projectile" or entity.name == "explosion":
+            continue
+
+        if entity.ko:
+            continue
+
+        # check enemy target
+        if entity.target:
+            if entity.target.id == chara.id:
+                enemies.append(entity)
+
+    return enemies
+
+
+# calculate how long it'll take for enemy to kill
+def time_to_death(chara, enemies):
+
+    if len(enemies) < 1:
+        return None
+
+    # put enemy attacks, cooldown in separate list
+    attack_pts = []
+    cooldown = []
+    original_cooldown = []
+
+    num_enemies = len(enemies)
+    total_damage = 0
+    time = 0
+
+    for enemy in enemies:
+        if enemy.name == "archer" or enemy.name == "wizard":
+            cooldown.append(enemy.ranged_cooldown)
+            original_cooldown.append(enemy.ranged_cooldown)
+            attack_pts.append(enemy.ranged_damage)
+
+        else:
+            cooldown.append(enemy.melee_cooldown)
+            original_cooldown.append(enemy.melee_cooldown)
+            attack_pts.append(enemy.melee_damage)
+
+    # while loop for each second
+    while True:
+
+        # calculate damage done each second
+        for i in range(0, num_enemies):
+
+            # -- check cooldown
+            if cooldown[i] <= 0:
+                # -- if cooldown ended, add damage
+                total_damage += attack_pts[i]
+                # -- reset cooldown
+                cooldown[i] = original_cooldown[i] + cooldown[i]
+
+            else:
+                cooldown[i] -= 1
+
+        if total_damage >= chara.current_hp:
+            return time
+
+        # increment time
+        time += 1
+
+
+# calculate how long it'll take for character to kill
+def time_to_kill(chara, enemy, attack_type):
+
+    attack_speed = 0
+    attack_pts = 0
+
+    # projectile or melee
+    if attack_type == "ranged":
+        attack_speed = chara.ranged_cooldown
+        attack_pts = chara.ranged_damage
+
+    else:
+        attack_speed = chara.melee_cooldown
+        attack_pts = chara.melee_damage
+
+    return enemy.current_hp / (attack_pts) * attack_speed
