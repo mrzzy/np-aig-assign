@@ -56,7 +56,9 @@ def run_trial(rng_seed):
         capture_output=True,
     )
     if hal_run.returncode != 0:
-        raise Exception(f"Unexpected exception running HAL:\n{hal_run.stderr}")
+        raise RuntimeError(
+            f"Unexpected exception running HAL:\n{hal_run.stderr.decode('utf-8')}"
+        )
 
     # extract game score from game stdout
     out_lines = hal_run.stdout.decode("utf-8").splitlines()

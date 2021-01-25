@@ -136,7 +136,10 @@ class KnightStateFleeing_TeamA(State):
         else:
             keys = [3, 4, 7, 6]
 
-        self.possible_end_nodes = [self.knight.world.graph.nodes.get(key) for  key in keys]
+
+        self.possible_end_nodes = [
+            self.knight.world.graph.nodes.get(key) for key in keys
+        ]
 
         # set graph to world graph
         self.path_graph = self.knight.world.graph
@@ -147,25 +150,28 @@ class KnightStateFleeing_TeamA(State):
 
         if self.knight.move_target.position != None:
 
-            self.knight.velocity = self.knight.move_target.position - self.knight.position
+            self.knight.velocity = (
+                self.knight.move_target.position - self.knight.position
+            )
 
             if self.knight.velocity.length() > 0:
-                self.knight.velocity.normalize_ip();
+                self.knight.velocity.normalize_ip()
                 self.knight.velocity *= self.knight.maxSpeed
-
 
     def check_conditions(self):
 
         if self.knight.target != None:
 
             # if target targetting chara and chara can kill without dying
-            if self.knight.target.target and self.knight.target.target.id == self.knight.id:
+            if (
+                self.knight.target.target
+                and self.knight.target.target.id == self.knight.id
+            ):
 
                 enemies = enemies_targetting(self.knight, self.knight.world)
 
-                if (
-                    time_to_death(self.knight, enemies) > 
-                    time_to_kill(self.knight, self.knight.target, "melee")
+                if time_to_death(self.knight, enemies) > time_to_kill(
+                    self.knight, self.knight.target, "melee"
                 ):
                     return "attacking"
             else:
@@ -176,12 +182,16 @@ class KnightStateFleeing_TeamA(State):
         # if knight hp >= 85%
         if self.knight.current_hp >= self.knight.max_hp * 0.85:
             return "seeking"
-        
+
         if (self.knight.position - self.knight.move_target.position).length() < 8:
 
             # continue on path
             if self.current_connection < self.path_length:
-                self.knight.move_target.position = self.path[self.current_connection].toNode.position
+
+                self.knight.move_target.position = self.path[
+                    self.current_connection
+                ].toNode.position
+
                 self.current_connection += 1
 
             # reached end of path
@@ -190,6 +200,7 @@ class KnightStateFleeing_TeamA(State):
 
                 # move if there are enemies
                 if nearest_opponent is not None:
+
                     getNewPath(self)
             
         return None
@@ -198,7 +209,6 @@ class KnightStateFleeing_TeamA(State):
     def entry_actions(self):
 
         getNewPath(self)
-
 
 
 class KnightStateAttacking_TeamA(State):
@@ -240,8 +250,8 @@ class KnightStateAttacking_TeamA(State):
             if (
                 len(enemies) < 1  or
                 not can_outrun(self.knight, enemies) or
-                time_to_death(self.knight, enemies) > 
-                time_to_kill(self.knight, self.knight.target, "melee")
+                time_to_death(self.knight, enemies) > time_to_kill(
+                self.knight, self.knight.target, "melee")
             ):
                 return None
 
@@ -289,6 +299,7 @@ class KnightStateKO_TeamA(State):
 
 # --- HELPER METHODS:
 # get number of enemies targetting character
+
 def enemies_targetting(chara, world):
 
     enemies = []
@@ -369,8 +380,6 @@ def time_to_death(chara, enemies):
         # increment time
         time += 1
 
-
-
 # calculate how long it'll take for character to kill
 def time_to_kill(chara, enemy, attack_type):
 
@@ -435,4 +444,3 @@ def getNewPath(charaState):
 
     else:
         charaState.knight.move_target.position = None
-
