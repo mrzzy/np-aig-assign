@@ -33,7 +33,9 @@ def import_npc(path):
     import_path = str((Path(".") / os.path.dirname(path)).absolute())
     sys.path.insert(0, import_path)
 
-    # remove world ext module to allow python to resolve the correct world ext module
+    # remove world ext module to force python to resolve the world ext module for each NPC.
+    # This allows us to ensure an NPC under directory/ will use directory/World_Ext.py
+    # instead to the current working directory's World_Ext.py.
     old_modules = dict(sys.modules)
     if "World_Ext" in sys.modules:
         del sys.modules["World_Ext"]
@@ -43,9 +45,8 @@ def import_npc(path):
     mod = module_from_spec(mod_spec)
     mod_spec.loader.exec_module(mod)
 
-    # return sys path and modules
+    # revert system path
     sys.path = old_path
-    sys.modules = old_modules
 
     # unpack npc class from module
     matching_names = [
@@ -354,6 +355,14 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
     seed(RANDOM_SEED)
     print(f"Using RNG seed: {RANDOM_SEED}")
 
+    Knight_TeamA = import_npc(KNIGHT_BLUE_SRC)
+    Archer_TeamA = import_npc(ARCHER_BLUE_SRC)
+    Wizard_TeamA = import_npc(WIZARD_BLUE_SRC)
+
+    Knight_TeamB = import_npc(KNIGHT_RED_SRC)
+    Archer_TeamB = import_npc(ARCHER_RED_SRC)
+    Wizard_TeamB = import_npc(WIZARD_RED_SRC)
+
     # log game parameters
     with log:
         log.params(PARAMS)
@@ -411,13 +420,6 @@ def run(log=loggers[LOGGER](), camera=cameras[CAMERA](RECORDING_PATH)):
         plateau_image = pygame.image.load("assets/plateau.png").convert_alpha()
 
         # --- Initialize Blue buildings and units ---
-        Knight_TeamA = import_npc(KNIGHT_BLUE_SRC)
-        Archer_TeamA = import_npc(ARCHER_BLUE_SRC)
-        Wizard_TeamA = import_npc(WIZARD_BLUE_SRC)
-
-        Knight_TeamB = import_npc(KNIGHT_RED_SRC)
-        Archer_TeamB = import_npc(ARCHER_RED_SRC)
-        Wizard_TeamB = import_npc(WIZARD_RED_SRC)
 
         blue_base = Base(world, blue_base_image, blue_orc_image, blue_rock_image, 0, 4)
         blue_base.position = Vector2(68, 68)
