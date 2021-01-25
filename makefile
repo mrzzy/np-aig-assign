@@ -11,7 +11,7 @@ BLACK_FMT:=$(PY) -m black
 .PHONY: deps format run run-trials
 
 run: dep-pip
-	$(PY) HAL.py
+	env DIFFICULTY=hard DEBUG=True REAL_TIME=False RANDOM_SEED=7479057933734829 $(PY) HAL.py
 	
 run-trials: dep-pip
 	$(PY) HALTrials.py
