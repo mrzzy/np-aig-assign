@@ -73,6 +73,7 @@ class KnightStateSeeking_TeamA(State):
 
         # check if opponent is in range
         nearest_opponent = self.knight.world.get_nearest_opponent(self.knight)
+
         if nearest_opponent is not None:
             opponent_distance = (
                 self.knight.position - nearest_opponent.position
@@ -277,7 +278,9 @@ class KnightStateKO_TeamA(State):
 
         return None
 
-# get numbre of enemies targetting character
+
+# --- HELPER METHODS:
+# get number of enemies targetting character
 def enemies_targetting(chara, world):
 
     enemies = []
