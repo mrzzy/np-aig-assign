@@ -473,13 +473,20 @@ def project_position(target: GameEntity, time_secs: float) -> Vector2:
     projected_velocity = target.velocity
     # only project velocity if he is actively moving
     if target.velocity.length() > 0:
+        move_target = None
         if getattr(target, "target", None) is not None:
-            projected_velocity = (
-                target.target.position - target.position
-            ).normalize() * target.maxSpeed
+            move_target = target.target
         elif getattr(target, "move_target", None) is not None:
+            move_target = target.move_target
+
+        # project velocity if it has not yet reached move target
+        # distance check required to prevent normalizing 0
+        if (
+            move_target is not None
+            and (move_target.position - target.position).length() > 0
+        ):
             projected_velocity = (
-                target.move_target.position - target.position
+                move_target.position - target.position
             ).normalize() * target.maxSpeed
 
     # project the targets position using velocity and the time passed in the previous frame
