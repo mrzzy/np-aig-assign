@@ -189,7 +189,15 @@ class WizardStateAttacking_TeamA(State):
                     self.wizard.projectile_range
             ):
                 # Move towards the sweet spot
-                self.wizard.velocity = self.sweet_spot - self.wizard.position
+                final_direction = self.sweet_spot - self.wizard.position
+                final_direction = avoid_obstacles(self.wizard, final_direction)
+
+                # Glide along edges
+                final_direction = avoid_edges(
+                    self.wizard.position, final_direction)
+
+                self.wizard.velocity = final_direction
+
                 if self.wizard.velocity.length() > 0:
                     self.wizard.velocity.normalize_ip()
                     self.wizard.velocity *= self.wizard.maxSpeed
@@ -226,13 +234,13 @@ class WizardStateFleeing_TeamA(State):
         # Set flee targets
         self.wizard.flee_targets = immediate_threats
 
-        # # Calculate the flee direction from all the threats
+        # Calculate the flee direction from all the threats
         final_direction = avoid_entities(self.wizard, immediate_threats)
 
         if not immediate_threats:
             final_direction = avoid_entities(self.wizard, non_immediate_threats)
 
-        # # Move along the obstacle lines if near them
+        # Move along the obstacle lines if near them
         final_direction = avoid_obstacles(self.wizard, final_direction)
 
         # Glide along edges
