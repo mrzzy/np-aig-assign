@@ -506,6 +506,9 @@ def line_of_slight(
     return True
 
 
+# TODO(mrzzy): project brain state based on Levenshtein distance
+
+
 def project_position(target: GameEntity, time_secs: float) -> Vector2:
     """
     Project the position of the target in time_secs from now.
@@ -515,20 +518,25 @@ def project_position(target: GameEntity, time_secs: float) -> Vector2:
     # only project velocity if he is actively moving
     if target.velocity.length() > 0:
         move_target = None
+        # TODO(mrzzy): use brain state to better figure out what the target is trying to.
         if getattr(target, "target", None) is not None:
-            move_target = target.target
+            if sprite.collide_rect(target, target.target):
+                # collided with its own target: estimate velocity to its own target's velocity
+                projected_velocity = target.target.velocity
+            else:
+                # project that the target is seeking its own target
+                projected_velocity = (
+                    target.target.position - target.position
+                ).normalize() * target.maxSpeed
         elif getattr(target, "move_target", None) is not None:
-            move_target = target.move_target
-
-        # project velocity if it has not yet reached move target
-        # distance check required to prevent normalizing 0
-        if (
-            move_target is not None
-            and (move_target.position - target.position).length() > 0
-        ):
-            projected_velocity = (
-                move_target.position - target.position
-            ).normalize() * target.maxSpeed
+            if distance(target.position, target.move_target.position) > 0:
+                # project that the target is seeking its move target
+                projected_velocity = (
+                    target.move_target.position - target.position
+                ).normalize() * target.maxSpeed
+            else:
+                # project has reached move target and stopped
+                projected_velocity = Vector2(0, 0)
 
     # project the targets position using velocity and the time passed in the previous frame
     projected_pos = Vector2(target.position + (projected_velocity * time_secs))
