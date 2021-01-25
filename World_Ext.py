@@ -506,6 +506,9 @@ def line_of_slight(
     return True
 
 
+# TODO(mrzzy): project brain state based on Levenshtein distance
+
+
 def project_position(target: GameEntity, time_secs: float) -> Vector2:
     """
     Project the position of the target in time_secs from now.
@@ -515,20 +518,31 @@ def project_position(target: GameEntity, time_secs: float) -> Vector2:
     # only project velocity if he is actively moving
     if target.velocity.length() > 0:
         move_target = None
-        if getattr(target, "target", None) is not None:
-            move_target = target.target
-        elif getattr(target, "move_target", None) is not None:
-            move_target = target.move_target
-
-        # project velocity if it has not yet reached move target
-        # distance check required to prevent normalizing 0
-        if (
-            move_target is not None
-            and (move_target.position - target.position).length() > 0
+        # TODO(mrzzy): use brain state to better figure out what the target is trying to.
+        if len(detect_collisions(target, collide_with=["obstacle"], any_one=True)) > 0:
+            # assume target is stuck
+            project_position = Vector2(0, 0)
+        elif (
+            getattr(target, "target", None) is not None
+            and distance(target.position, target.target.position)
+            <= target.min_target_distance
         ):
-            projected_velocity = (
-                move_target.position - target.position
-            ).normalize() * target.maxSpeed
+            # assume that target is trying to attack its own target within target distance
+            if sprite.collide_rect(target, target.target):
+                # collided with its own target: estimate velocity to its own target's velocity
+                projected_velocity = target.target.velocity
+            else:
+                # project that the target is seeking its own target
+                projected_velocity = (
+                    target.target.position - target.position
+                ).normalize() * target.maxSpeed
+        elif getattr(target, "move_target", None) is not None:
+            # assume that target is trying to seek its move target
+            if distance(target.position, target.move_target.position) > 0:
+                # project that the target is seeking its move target
+                projected_velocity = (
+                    target.move_target.position - target.position
+                ).normalize() * target.maxSpeed
 
     # project the targets position using velocity and the time passed in the previous frame
     projected_pos = Vector2(target.position + (projected_velocity * time_secs))

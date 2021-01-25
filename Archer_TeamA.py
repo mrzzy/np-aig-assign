@@ -51,21 +51,24 @@ class Archer_TeamA(Character):
         self.graph = interpolate_graph(self.world.graph)
         # choose a random starting node, ultimately deciding the path taken
         starting_nodes = [
-            c.toNode
-            for c in self.graph.getConnections(
-                self.graph.nodes[self.base.spawn_node_index]
-            )
+            self.world.graph.nodes[2],
+            self.world.graph.nodes[5],
+            self.world.graph.nodes[9],
+            self.world.graph.nodes[12],
         ]
         self.starting_node = random_choice(starting_nodes)
+        print(self.starting_node.position)
 
         seeking_state = ArcherStateSeeking_TeamA(self)
         combat_state = ArcherStateCombat_TeamA(self)
         searching_state = ArcherStateSearching_TeamA(self)
+        fleeing_state = ArcherStateFleeing_TeamA(self)
         ko_state = ArcherStateKO_TeamA(self)
 
         self.brain.add_state(seeking_state)
         self.brain.add_state(combat_state)
         self.brain.add_state(searching_state)
+        self.brain.add_state(fleeing_state)
         self.brain.add_state(ko_state)
 
         self.brain.set_state("seeking")
@@ -83,8 +86,9 @@ class Archer_TeamA(Character):
 
         level_up_stats_weighted = [
             ("ranged cooldown", 0.6),
-            ("projectile range", 0.3),
-            ("healing cooldown", 0.1),
+            ("projectile range", 0.1),
+            ("heal cooldown", 0.1),
+            ("speed", 0.2),
         ]
         if self.can_level_up():
             upgrade_stat = random_choices(
@@ -103,16 +107,9 @@ class ArcherStateSeeking_TeamA(State):
         State.__init__(self, "seeking")
         self.archer = archer
 
-    def do_actions(self):
-        self.archer.velocity = seek(self.archer, self.archer.move_target.position)
-
-        # patch up health while seeking
-        if self.archer.current_hp < self.archer.max_hp:
-            self.archer.heal()
-
-    def check_conditions(self):
-        # check if being attacked
+    def get_opponent(self):
         # TODO (mrzzy): replace with collect_threats()
+        # check if being attacked
         attackers = get_attackers(self.archer)
         if len(attackers) > 0:
             # TODO(mrzzy): fight back against most threatening attacker
@@ -121,15 +118,31 @@ class ArcherStateSeeking_TeamA(State):
         else:
             # fight nearest opponent
             opponent = find_closest_opponent(
-                graph=self.archer.graph, entity=self.archer
+                graph=self.archer.graph,
+                entity=self.archer,
+                terror_radius=self.archer.min_target_distance,
             )
 
-        # check if opponent is in range
+        return opponent
+
+    def do_actions(self):
+        self.archer.velocity = seek(self.archer, self.archer.move_target.position)
+        self.opponent = self.get_opponent()
+
+        # patch up health while seeking and no opponent in sight
+        if self.archer.current_hp < self.archer.max_hp and not self.opponent:
+            self.archer.heal()
+
+    def check_conditions(self):
+        if (
+            self.archer.current_hp / self.archer.max_hp
+        ) < ArcherStateFleeing_TeamA.hp_threshold:
+            return "fleeing"
+
+        opponent = self.opponent
         if opponent is not None:
-            opponent_distance = (self.archer.position - opponent.position).length()
-            if opponent_distance <= self.archer.min_target_distance:
-                self.archer.target = opponent
-                return "combat"
+            self.archer.target = opponent
+            return "combat"
 
         if (self.archer.position - self.archer.move_target.position).length() < 8:
 
@@ -143,7 +156,6 @@ class ArcherStateSeeking_TeamA(State):
         return None
 
     def entry_actions(self):
-        # TODO(mrzzy): replace path graph with graph + starting position.
         base = self.archer.base
         if distance(self.archer.position, base.spawn_position) <= 0:
             # just spawned: navigating via starting node
@@ -198,17 +210,19 @@ class ArcherStateCombat_TeamA(State):
         # using a the time passsed of the previous frame as reference
         projected_pos = project_position(opponent, time_passed)
         opponent_dist = (projected_pos - current_pos).length()
+        # TODO: remove
+        self.archer.projected_pos = projected_pos
 
         # attack: attack opponent when within range
         if (
             opponent_dist <= self.archer.projectile_range
             and self.archer.current_ranged_cooldown <= 0
         ):
-            # project the position when the arrow should hit the opponent
-            # take into account arrow travel time
             projected_travel_time = opponent_dist / self.archer.projectile_speed
             attack_pos = project_position(opponent, time_passed + projected_travel_time)
             self.archer.ranged_attack(attack_pos)
+            # TODO: remove
+            self.archer.attack_pos = attack_pos
 
         # movement: practice safe distancing by move to attack at safe distance.
         safe_dist = self.archer.projectile_range
@@ -231,6 +245,11 @@ class ArcherStateCombat_TeamA(State):
         self.archer.velocity = seek(self.archer, self.archer.move_target.position)
 
     def check_conditions(self):
+        if (
+            self.archer.current_hp / self.archer.max_hp
+        ) < ArcherStateFleeing_TeamA.hp_threshold:
+            return "fleeing"
+
         # target has KOed
         if is_target_ko(self.archer):
             self.archer.target = None
@@ -258,10 +277,15 @@ class ArcherStateSearching_TeamA(State):
     def __init__(self, archer):
         State.__init__(self, "searching")
         self.archer = archer
-        self.search_offset = 150
+        self.search_offset = 125
+        self.heal_threshold = 0.75
+        self.regain_sight_threshold = 1.4
 
     def do_actions(self):
-        # TODO(mrzzy): patch up on health when searching?
+        # patch up on health when searching
+        if (self.archer.current_hp / self.archer.max_hp) < self.heal_threshold:
+            self.archer.heal()
+
         # move to search the target's position, navigating the graph as required.
         current_pos, opponent, world, graph, time_passed = (
             self.archer.position,
@@ -300,13 +324,42 @@ class ArcherStateSearching_TeamA(State):
         if line_of_slight(
             self.archer,
             self.archer.target,
-            step_dist=10,
-            ray_width=self.archer.projectile_size[1],
+            ray_width=self.archer.projectile_size[1] * self.regain_sight_threshold,
         ):
             return "combat"
 
 
-# TODO(mrzzy): add fleeing state
+class ArcherStateFleeing_TeamA(State):
+    # start fleeing before one hit from wizard hit can kill
+    hp_threshold = 0.30
+
+    def __init__(self, archer):
+        State.__init__(self, "fleeing")
+        self.archer = archer
+        self.flee_radius = 100
+        self.exit_hp_threshold = 0.75
+
+    def do_actions(self):
+        # Try and heal
+        if self.archer.current_hp != self.archer.max_hp:
+            self.archer.heal()
+
+        # Dodge immediate threats
+        immediate_threats, non_immediate_threats = collect_threats(
+            self.archer, self.flee_radius
+        )
+
+        # Calculate the flee direction from all the threats
+        final_direction = avoid_entities(self.archer, immediate_threats)
+        if not immediate_threats:
+            final_direction = avoid_entities(self.archer, non_immediate_threats)
+
+        move_pos = final_direction * self.archer.maxSpeed
+        self.archer.velocity = seek(self.archer, move_pos)
+
+    def check_conditions(self):
+        if (self.archer.current_hp / self.archer.max_hp) >= self.exit_hp_threshold:
+            return "seeking"
 
 
 class ArcherStateKO_TeamA(State):
