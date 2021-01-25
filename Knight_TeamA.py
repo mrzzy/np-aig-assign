@@ -373,7 +373,10 @@ def time_to_kill(chara, enemy, attack_type):
         attack_speed = chara.melee_cooldown
         attack_pts = chara.melee_damage
 
-    return (enemy.current_hp / (attack_pts) * attack_speed) + chara.current_healing_cooldown
+    return (
+        enemy.current_hp / (attack_pts) * attack_speed
+    ) + chara.current_healing_cooldown
+
 
 def getNewPath(chara):
     nearest_node = chara.path_graph.get_nearest_node(chara.knight.position)
