@@ -795,10 +795,7 @@ def wait_and_copy(name: str):
                 if e.name == name and e.team_id != self.character.team_id:
                     opp_character = e
 
-            if (
-                opp_character
-                and getattr(opp_character, "path_graph", None) is not None
-            ):
+            if opp_character and getattr(opp_character, "path_graph", None) is not None:
                 self.character.path_graph = opp_character.path_graph
                 return "seeking"
 
