@@ -555,20 +555,14 @@ This effect can be achieved by weighting the desired direction and the
 “corrective” vector based on a ratio of distance from boundary to
 maximum distance to boundary:
 
-<table>
-<tbody>
-<tr class="odd">
-<td><p># Move towards the path based on how far the entity is from path</p>
-<p># The further the entity is from the path, the more the bias is ignored</p>
-<p>foot_bias_ratio = (min(closest_edge["distance"], MAX_DISTANCE)) / MAX_DISTANCE</p>
-<p>vec = (closest_edge["foot"] - avoider.position).normalize() * foot_bias_ratio</p>
-<p>vec += biased_dir.normalize() * (1 - foot_bias_ratio)</p>
-<p>return vec</p></td>
-</tr>
-</tbody>
-</table>
-
-Visually:
+```python
+# Move towards the path based on how far the entity is from path
+# The further the entity is from the path, the more the bias is ignored
+foot_bias_ratio = (min(closest_edge["distance"], MAX_DISTANCE)) / MAX_DISTANCE
+vec = (closest_edge["foot"] - avoider.position).normalize() * foot_bias_ratio
+vec += biased_dir.normalize() * (1 - foot_bias_ratio)
+return vec
+```
 
 ### Predicting and Hitting Multiple Enemies
 
