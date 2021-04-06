@@ -3,6 +3,7 @@ import pygame
 from random import randint, random
 from Graph import *
 
+from World_Ext import wait_and_copy
 from Character import *
 from State import *
 
@@ -22,17 +23,19 @@ class Knight_TeamA(Character):
         self.melee_damage = 20
         self.melee_cooldown = 2.0
 
+        waiting_state = wait_and_copy(self.name)(self)
         seeking_state = KnightStateSeeking_TeamA(self)
         fleeing_state = KnightStateFleeing_TeamA(self)
         attacking_state = KnightStateAttacking_TeamA(self)
         ko_state = KnightStateKO_TeamA(self)
 
+        self.brain.add_state(waiting_state)
         self.brain.add_state(seeking_state)
         self.brain.add_state(fleeing_state)
         self.brain.add_state(attacking_state)
         self.brain.add_state(ko_state)
 
-        self.brain.set_state("seeking")
+        self.brain.set_state("waiting")
 
     def render(self, surface):
 
@@ -370,7 +373,10 @@ def time_to_kill(chara, enemy, attack_type):
         attack_speed = chara.melee_cooldown
         attack_pts = chara.melee_damage
 
-    return (enemy.current_hp / (attack_pts) * attack_speed) + chara.current_healing_cooldown
+    return (
+        enemy.current_hp / (attack_pts) * attack_speed
+    ) + chara.current_healing_cooldown
+
 
 def getNewPath(chara):
     nearest_node = chara.path_graph.get_nearest_node(chara.knight.position)

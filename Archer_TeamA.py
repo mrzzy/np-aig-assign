@@ -59,19 +59,21 @@ class Archer_TeamA(Character):
         self.starting_node = random_choice(starting_nodes)
         print(self.starting_node.position)
 
+        waiting_state = wait_and_copy(self.name)(self)
         seeking_state = ArcherStateSeeking_TeamA(self)
         combat_state = ArcherStateCombat_TeamA(self)
         searching_state = ArcherStateSearching_TeamA(self)
         fleeing_state = ArcherStateFleeing_TeamA(self)
         ko_state = ArcherStateKO_TeamA(self)
 
+        self.brain.add_state(waiting_state)
         self.brain.add_state(seeking_state)
         self.brain.add_state(combat_state)
         self.brain.add_state(searching_state)
         self.brain.add_state(fleeing_state)
         self.brain.add_state(ko_state)
 
-        self.brain.set_state("seeking")
+        self.brain.set_state("waiting")
 
         self.time_passed = 1 / 30
 
